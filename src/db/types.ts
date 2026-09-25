@@ -8,13 +8,10 @@ export interface TemplateField {
   type: FieldType
 }
 
-export type FillStyle = 'solid' | 'hachure' | 'cross-hatch' | 'none'
-
 export interface NodeStyle {
   stroke: PaletteColor
   background: PaletteColor
   strokeWidth: StrokeWidth
-  fillStyle: FillStyle
 }
 
 export interface NodeTemplate {

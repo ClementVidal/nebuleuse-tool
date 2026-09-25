@@ -1,5 +1,5 @@
 import { CornerDownRight, RotateCcw, Trash2 } from 'lucide-react'
-import { ColorPicker, EnumPicker, StrokeWidthPicker } from '@/components/style-pickers'
+import { ColorPicker, StrokeWidthPicker } from '@/components/style-pickers'
 import { RichTextEditor } from '@/components/rich-text-editor'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { deleteNodes, updateNode, updateNodeValue } from '@/db/actions'
 import { BACKGROUND_COLORS, STROKE_COLORS } from '@/db/palette'
 import type { IdeaNode, NodeStyle, NodeTemplate, TemplateField } from '@/db/types'
-import { FILL_STYLE_OPTIONS, resolveNodeStyle } from './node-style'
+import { resolveNodeStyle } from './node-style'
 
 interface NodeEditorSheetProps {
   node: IdeaNode | undefined
@@ -93,15 +93,9 @@ function NodeEditor({ node, templates, onClose, onOpenNode }: Required<NodeEdito
             <Label>Fond</Label>
             <ColorPicker colors={BACKGROUND_COLORS} value={style.background} onChange={(background) => setStyle({ background })} />
           </div>
-          <div className="flex flex-wrap gap-6">
-            <div className="grid gap-2">
-              <Label>Bordure</Label>
-              <StrokeWidthPicker value={style.strokeWidth} onChange={(strokeWidth) => setStyle({ strokeWidth })} />
-            </div>
-            <div className="grid gap-2">
-              <Label>Remplissage</Label>
-              <EnumPicker value={style.fillStyle} onChange={(fillStyle) => setStyle({ fillStyle })} options={FILL_STYLE_OPTIONS} />
-            </div>
+          <div className="grid gap-2">
+            <Label>Bordure</Label>
+            <StrokeWidthPicker value={style.strokeWidth} onChange={(strokeWidth) => setStyle({ strokeWidth })} />
           </div>
         </div>
       </div>

@@ -29,7 +29,7 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 - Templates créés par défaut avec un nouveau projet : `Note`, `Réflexion`, `Research`.
 - Un template définit :
   - un **style** : couleur de trait et couleur de fond choisies dans une palette limitée,
-    épaisseur de bordure (fine / moyenne / épaisse), style de remplissage ;
+    épaisseur de bordure (fine / moyenne / épaisse) ;
   - une liste ordonnée de **champs** : `{ id, label, type }` avec
     `type ∈ { richtext, date, number }`.
 - Un template utilisé par au moins un nœud ne peut pas être supprimé (v1).
@@ -42,8 +42,9 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
   **tracé** (droit / courbe), **trait** (plein / tirets / pointillés).
 
 ## Style visuel
-- Inspiré d'Excalidraw : tracés « dessinés à la main » (rough.js), police manuscrite
-  Excalifont dans le canvas.
+- On reprend l'**UX** d'Excalidraw (simple, directe, peu de menus, tout au clavier),
+  pas son rendu « dessiné à la main » : nœuds et liens nets, sobres.
+- Un nœud qui possède déjà une carte enfant est affiché comme une pile de cartes.
 - Palette limitée partagée par les nœuds et les liens (voir `src/db/palette.ts`).
 - Interface autour du canvas : composants shadcn/ui standard, thème clair / sombre.
 - Langue de l'interface : français.
@@ -76,3 +77,7 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 - Export / import JSON d'un projet.
 - Une carte atteignable depuis plusieurs nœuds (graphe plutôt qu'arbre).
 - Synchronisation serveur / multi-utilisateurs.
+- **Serveur MCP** pour qu'un LLM puisse lire et écrire dans les cartes et structurer une pensée :
+  `QueryReflexionMap(mapId, search)` et `PatchReflexionMap(mapId, patch)` (plus probablement
+  `ListProjects` et `OpenNode` pour découvrir les cartes). Prérequis : les données doivent être
+  accessibles hors du navigateur (piste privilégiée : serveur local + SQLite comme source de vérité).

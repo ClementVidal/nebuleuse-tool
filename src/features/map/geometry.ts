@@ -30,6 +30,8 @@ export interface EdgeGeometry {
   path: string
   start: Point
   end: Point
+  /** Quadratic control point for curved edges. */
+  control: Point | null
   /** Direction the path leaves `start`, and arrives at `end` (unit vectors). */
   startDir: Point
   endDir: Point
@@ -51,6 +53,7 @@ export function edgeGeometry(source: Rect, target: Rect, curved: boolean): EdgeG
       path: `M ${start.x} ${start.y} L ${end.x} ${end.y}`,
       start,
       end,
+      control: null,
       startDir: dir,
       endDir: dir,
       labelAt: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 },
@@ -66,11 +69,21 @@ export function edgeGeometry(source: Rect, target: Rect, curved: boolean): EdgeG
     path: `M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`,
     start,
     end,
+    control,
     startDir: unit({ x: control.x - start.x, y: control.y - start.y }),
     endDir: unit({ x: end.x - control.x, y: end.y - control.y }),
     // Point at t = 0.5 on the quadratic curve.
     labelAt: { x: (start.x + 2 * control.x + end.x) / 4, y: (start.y + 2 * control.y + end.y) / 4 },
   }
+}
+
+/** SVG path of the edge with its ends pulled back (e.g. to make room for arrowheads). */
+export function insetPath(g: EdgeGeometry, startInset: number, endInset: number): string {
+  const start = { x: g.start.x + g.startDir.x * startInset, y: g.start.y + g.startDir.y * startInset }
+  const end = { x: g.end.x - g.endDir.x * endInset, y: g.end.y - g.endDir.y * endInset }
+  return g.control
+    ? `M ${start.x} ${start.y} Q ${g.control.x} ${g.control.y} ${end.x} ${end.y}`
+    : `M ${start.x} ${start.y} L ${end.x} ${end.y}`
 }
 
 /** The two wing segments of an arrowhead whose tip is `tip`, pointing along `dir`. */

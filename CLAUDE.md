@@ -15,12 +15,12 @@ Guide for working in this repository. Product spec: `SPEC.md` (French). UI copy 
 - `src/features/map/` — the canvas.
   - `map-canvas.tsx` owns React Flow state. DB → RF sync spreads the previous RF node/edge first so React Flow's internal state (`measured`, selection…) survives; dropping `measured` makes edges disappear.
   - Positions are persisted on drag stop, sizes on resize end (`idea-node.tsx`), viewport on move end.
-  - `sketch-edge.tsx` floating edges (anchored on node borders, handles are only for connecting) drawn with rough.js; `geometry.ts` holds the maths.
+  - `link-edge.tsx` floating edges (anchored on node borders, handles are only for connecting) with custom arrowheads; `geometry.ts` holds the maths.
   - Keyboard shortcuts are a window listener in `map-canvas.tsx`; they're ignored while typing or when a dialog is open. Keep `keyboard-help.tsx` and `SPEC.md` in sync when changing them.
 - `src/features/templates/` — per-project template editor. `src/features/projects/` — project list.
 - `src/router.tsx` — TanStack Router, code-based routes. `/projects/$projectId/maps/$mapId?focus=<nodeId>`.
 - `src/components/ui/` — shadcn/ui components, unmodified (new-york style). Add new ones from the shadcn registry rather than hand-writing them.
 
 ## Conventions
-- Rough.js shapes take a stable `seed` from the element id (`seedFrom`) so the jitter doesn't change between renders.
+- Visual style: clean and sober. Excalidraw is the reference for the *UX* (minimal, direct, keyboard-first), not for the hand-drawn look.
 - Apply colours through `style` (not SVG attributes) so CSS variables work.

@@ -43,7 +43,7 @@ export function ProjectsPage() {
   return (
     <div className="min-h-dvh">
       <header className="flex h-14 items-center justify-between border-b px-4">
-        <span className="font-sketch text-2xl">Nébuleuse</span>
+        <span className="text-lg font-semibold tracking-tight">Nébuleuse</span>
         <ThemeToggle />
       </header>
 

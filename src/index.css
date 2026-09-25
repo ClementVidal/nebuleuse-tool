@@ -4,12 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@font-face {
-  font-family: "Excalifont";
-  src: url("/fonts/Excalifont-Latin.woff2") format("woff2");
-  font-display: swap;
-}
-
 /* shadcn/ui — neutral base color */
 :root {
   --radius: 0.625rem;
@@ -32,7 +26,7 @@
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
 
-  /* Sketch palette (Excalidraw-like) */
+  /* Canvas palette shared by nodes and edges (see src/db/palette.ts) */
   --sketch-ink: #1e1e1e;
   --sketch-red: #e03131;
   --sketch-green: #2f9e44;
@@ -82,7 +76,6 @@
 }
 
 @theme inline {
-  --font-sketch: "Excalifont", "Segoe Print", "Comic Sans MS", cursive;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

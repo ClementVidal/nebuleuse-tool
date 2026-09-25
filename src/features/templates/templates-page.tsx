@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowDown, ArrowLeft, ArrowUp, Plus, Trash2 } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import { useState } from 'react'
-import { ColorPicker, EnumPicker, StrokeWidthPicker } from '@/components/style-pickers'
+import { ColorPicker, StrokeWidthPicker } from '@/components/style-pickers'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,6 @@ import { createTemplate, countTemplateUsage, deleteTemplate, updateTemplate } fr
 import { useProject, useTemplates } from '@/db/hooks'
 import { BACKGROUND_COLORS, colorCss, STROKE_COLORS } from '@/db/palette'
 import type { FieldType, NodeStyle, NodeTemplate, TemplateField } from '@/db/types'
-import { FILL_STYLE_OPTIONS } from '@/features/map/node-style'
 import { cn } from '@/lib/utils'
 
 const FIELD_TYPES: { value: FieldType; label: string }[] = [
@@ -110,15 +109,9 @@ function TemplateEditor({ template }: { template: NodeTemplate }) {
             <Label>Couleur de fond</Label>
             <ColorPicker colors={BACKGROUND_COLORS} value={template.style.background} onChange={(background) => setStyle({ background })} />
           </div>
-          <div className="flex flex-wrap gap-6">
-            <div className="grid gap-2">
-              <Label>Bordure</Label>
-              <StrokeWidthPicker value={template.style.strokeWidth} onChange={(strokeWidth) => setStyle({ strokeWidth })} />
-            </div>
-            <div className="grid gap-2">
-              <Label>Remplissage</Label>
-              <EnumPicker value={template.style.fillStyle} onChange={(fillStyle) => setStyle({ fillStyle })} options={FILL_STYLE_OPTIONS} />
-            </div>
+          <div className="grid gap-2">
+            <Label>Bordure</Label>
+            <StrokeWidthPicker value={template.style.strokeWidth} onChange={(strokeWidth) => setStyle({ strokeWidth })} />
           </div>
         </CardContent>
       </Card>

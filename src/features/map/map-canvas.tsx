@@ -25,11 +25,11 @@ import { center } from './geometry'
 import { IdeaNodeComponent, type IdeaFlowNode } from './idea-node'
 import { MapContext, type MapActions } from './map-context'
 import { NodeEditorSheet } from './node-editor-sheet'
-import { SketchEdgeComponent, type SketchFlowEdge } from './sketch-edge'
+import { LinkEdgeComponent, type LinkFlowEdge } from './link-edge'
 import { findNeighbor, placeBeside, type Direction } from './spatial-nav'
 
 const nodeTypes = { idea: IdeaNodeComponent }
-const edgeTypes = { sketch: SketchEdgeComponent }
+const edgeTypes = { link: LinkEdgeComponent }
 
 const ARROW_KEYS: Record<string, Direction> = {
   ArrowLeft: 'left',
@@ -64,12 +64,12 @@ export function MapCanvas({
   onNavigateUp,
   onSelectTemplateIndex,
 }: MapCanvasProps) {
-  const rf = useReactFlow<IdeaFlowNode, SketchFlowEdge>()
+  const rf = useReactFlow<IdeaFlowNode, LinkFlowEdge>()
   const wrapperRef = useRef<HTMLDivElement>(null)
   const dbNodes = useMapNodes(map.id)
   const dbEdges = useMapEdges(map.id)
   const [nodes, setNodes] = useState<IdeaFlowNode[]>([])
-  const [edges, setEdges] = useState<SketchFlowEdge[]>([])
+  const [edges, setEdges] = useState<LinkFlowEdge[]>([])
   const [editingNodeId, setEditingNodeId] = useState<string>()
   /** Node to select once it shows up from the database (after creation / on open). */
   const pendingSelection = useRef<string | undefined>(focusNodeId)
@@ -104,10 +104,10 @@ export function MapCanvas({
     if (!dbEdges) return
     setEdges((prev) => {
       const prevById = new Map(prev.map((e) => [e.id, e]))
-      return dbEdges.map((model): SketchFlowEdge => ({
+      return dbEdges.map((model): LinkFlowEdge => ({
         ...prevById.get(model.id),
         id: model.id,
-        type: 'sketch',
+        type: 'link',
         source: model.source,
         target: model.target,
         data: { model },
@@ -124,11 +124,11 @@ export function MapCanvas({
     void updateNodePositions(dragged.map((n) => ({ id: n.id, x: n.position.x, y: n.position.y })))
   }, [])
 
-  const onEdgesChange = useCallback((changes: EdgeChange<SketchFlowEdge>[]) => {
+  const onEdgesChange = useCallback((changes: EdgeChange<LinkFlowEdge>[]) => {
     setEdges((current) => applyEdgeChanges(changes, current))
   }, [])
 
-  const onDelete: OnDelete<IdeaFlowNode, SketchFlowEdge> = useCallback(({ nodes: deletedNodes, edges: deletedEdges }) => {
+  const onDelete: OnDelete<IdeaFlowNode, LinkFlowEdge> = useCallback(({ nodes: deletedNodes, edges: deletedEdges }) => {
     if (deletedNodes.length) void deleteNodes(deletedNodes.map((n) => n.id))
     if (deletedEdges.length) void deleteEdges(deletedEdges.map((e) => e.id))
   }, [])
@@ -286,7 +286,7 @@ export function MapCanvas({
           if ((e.target as HTMLElement).classList.contains('react-flow__pane')) addNodeAtScreen(e.clientX, e.clientY)
         }}
       >
-        <ReactFlow<IdeaFlowNode, SketchFlowEdge>
+        <ReactFlow<IdeaFlowNode, LinkFlowEdge>
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
@@ -317,7 +317,7 @@ export function MapCanvas({
             </Panel>
           )}
           {dbNodes.length === 0 && (
-            <Panel position="top-center" className="pointer-events-none mt-24 text-center font-sketch text-xl text-muted-foreground">
+            <Panel position="top-center" className="pointer-events-none mt-24 text-center text-muted-foreground">
               Double-clique ou appuie sur <kbd className="rounded border px-1.5 font-sans text-sm">N</kbd> pour créer une idée
             </Panel>
           )}
