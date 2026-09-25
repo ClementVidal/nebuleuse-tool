@@ -1,16 +1,12 @@
-import { Bookmark, BookmarkCheck, RotateCcw, Trash2 } from 'lucide-react'
-import { ColorPicker, StrokeWidthPicker } from '@/components/style-pickers'
+import { Bookmark, BookmarkCheck, Trash2 } from 'lucide-react'
 import { RichTextEditor } from '@/components/rich-text-editor'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { deleteNodes, setBookmarked, updateNode, updateNodeValue } from '@/db/actions'
-import { BACKGROUND_COLORS, STROKE_COLORS } from '@/db/palette'
-import type { IdeaNode, NodeStyle, NodeTemplate, TemplateField } from '@/db/types'
-import { resolveNodeStyle } from './node-style'
+import type { IdeaNode, NodeTemplate, TemplateField } from '@/db/types'
 
 interface NodeEditorSheetProps {
   node: IdeaNode | undefined
@@ -30,8 +26,6 @@ export function NodeEditorSheet({ node, templates, onClose }: NodeEditorSheetPro
 
 function NodeEditor({ node, templates, onClose }: Required<NodeEditorSheetProps> & { node: IdeaNode }) {
   const template = templates.find((t) => t.id === node.templateId)
-  const style = resolveNodeStyle(node, template)
-  const setStyle = (changes: Partial<NodeStyle>) => updateNode(node.id, { style: { ...node.style, ...changes } })
 
   return (
     <>
@@ -73,30 +67,6 @@ function NodeEditor({ node, templates, onClose }: Required<NodeEditorSheetProps>
           <FieldEditor key={field.id} node={node} field={field} />
         ))}
 
-        <Separator />
-
-        <div className="grid gap-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Style</span>
-            {node.style && Object.keys(node.style).length > 0 && (
-              <Button variant="ghost" size="sm" onClick={() => updateNode(node.id, { style: undefined })}>
-                <RotateCcw /> Style du template
-              </Button>
-            )}
-          </div>
-          <div className="grid gap-2">
-            <Label>Trait</Label>
-            <ColorPicker colors={STROKE_COLORS} value={style.stroke} onChange={(stroke) => setStyle({ stroke })} />
-          </div>
-          <div className="grid gap-2">
-            <Label>Fond</Label>
-            <ColorPicker colors={BACKGROUND_COLORS} value={style.background} onChange={(background) => setStyle({ background })} />
-          </div>
-          <div className="grid gap-2">
-            <Label>Bordure</Label>
-            <StrokeWidthPicker value={style.strokeWidth} onChange={(strokeWidth) => setStyle({ strokeWidth })} />
-          </div>
-        </div>
       </div>
 
       <SheetFooter className="flex-row justify-between border-t">

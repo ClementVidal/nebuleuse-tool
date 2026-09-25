@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { createEdge, createNode, deleteEdges, deleteNodes, saveViewport, setBookmarked, updateNodePositions } from '@/db/actions'
 import { DEFAULT_NODE_SIZE } from '@/db/defaults'
+import { colorCss, dimmedColorCss } from '@/db/palette'
 import { record } from '@/db/history'
 import { useChildMapSizes, useMapEdges, useMapNodes } from '@/db/hooks'
 import type { IdeaNode, NodeTemplate, ReflexionMap } from '@/db/types'
@@ -31,6 +32,7 @@ import { setCanvasLocked, useCanvasLocked } from './lock-store'
 import { onMapCommand } from './map-commands'
 import { MapContext, type MapActions } from './map-context'
 import { NodeEditorSheet } from './node-editor-sheet'
+import { templateStyle } from './node-style'
 import { LinkEdgeComponent, type LinkFlowEdge } from './link-edge'
 import { findNeighbor, placeBeside, type Direction } from './spatial-nav'
 
@@ -59,6 +61,11 @@ interface MapCanvasProps {
   onOpenNode: (nodeId: string) => void
   onNavigateUp: (() => void) | undefined
   onSelectTemplateIndex: (index: number) => void
+  /**
+   * Called once `focusNodeId` has been revealed, so the page can drop it from the URL:
+   * going back to this map then restores the last view instead of re-centering.
+   */
+  onFocusConsumed: () => void
 }
 
 export function MapCanvas({
@@ -69,6 +76,7 @@ export function MapCanvas({
   onOpenNode,
   onNavigateUp,
   onSelectTemplateIndex,
+  onFocusConsumed,
 }: MapCanvasProps) {
   const rf = useReactFlow<IdeaFlowNode, LinkFlowEdge>()
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -236,7 +244,8 @@ export function MapCanvas({
     if (!rf.getInternalNode(focusNodeId)?.measured.width) return
     focusDone.current = focusNodeId
     selectOnly(focusNodeId, { center: true })
-  }, [focusNodeId, nodes, rf, selectOnly])
+    onFocusConsumed()
+  }, [focusNodeId, nodes, rf, selectOnly, onFocusConsumed])
 
   // Focus requests for a node of this map (bookmarks, search) when the URL doesn't change.
   useEffect(
@@ -462,13 +471,13 @@ export function MapCanvas({
           <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
           <Controls showInteractive={false} position="bottom-left" />
           <CanvasToolbar projectId={map.projectId} />
-          <MiniMap
+          <MiniMap<IdeaFlowNode>
             pannable
             zoomable
             position="bottom-right"
             className="max-md:!hidden"
-            nodeColor="var(--sketch-blue-soft)"
-            nodeStrokeColor="var(--sketch-ink)"
+            nodeColor={(n) => dimmedColorCss(templateStyle(templatesById.get(n.data.model.templateId)).color)}
+            nodeStrokeColor={(n) => colorCss(templateStyle(templatesById.get(n.data.model.templateId)).color)}
           />
           {/* Touch screens have no N key: an explicit button to create an idea. */}
           <Panel position="bottom-right" className="!mb-8 md:hidden">

@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { redo, undo } from '@/db/history'
 import { CommandPalette } from './command-palette'
 import { setCommandPaletteOpen } from './palette-store'
+import { useSwipeBack } from './use-swipe-back'
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -12,6 +13,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 /** Root layout: global shortcuts (command palette, undo / redo) around the current page. */
 export function AppShell() {
   const { projectId } = useParams({ strict: false })
+  useSwipeBack()
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

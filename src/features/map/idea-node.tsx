@@ -3,12 +3,11 @@ import { ArrowDown, ArrowUp, Bookmark, CornerDownRight, LocateFixed, Pencil } fr
 import { memo, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { updateNode } from '@/db/actions'
-import { colorCss, STROKE_WIDTHS } from '@/db/palette'
 import type { IdeaNode as IdeaNodeModel } from '@/db/types'
 import { cn } from '@/lib/utils'
 import { useMapActions } from './map-context'
 import { markdownExcerpt } from './markdown'
-import { resolveNodeStyle } from './node-style'
+import { nodeBoxStyle, templateStyle } from './node-style'
 
 export type IdeaFlowNode = Node<{ model: IdeaNodeModel }, 'idea'>
 
@@ -16,10 +15,7 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
   const { model } = data
   const { templates, openNode, editNode, navigateUp, childMapSizes, menuNodeId, locked, focusNode, closeMenu } = useMapActions()
   const template = templates.get(model.templateId)
-  const style = resolveNodeStyle(model, template)
-  const stroke = colorCss(style.stroke)
-  const borderWidth = STROKE_WIDTHS[style.strokeWidth].px
-  const background = style.background === 'transparent' ? 'var(--canvas)' : colorCss(style.background)
+  const box = nodeBoxStyle(templateStyle(template))
   const childSize = model.childMapId ? (childMapSizes.get(model.childMapId) ?? 0) : 0
   const hasChildMap = childSize > 0
 
@@ -45,24 +41,21 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
       />
       {/* A card stacked behind hints that the node opens onto a deeper map. */}
       {hasChildMap && (
-        <div
-          className="absolute inset-0 translate-x-1.5 translate-y-1.5 rounded-lg"
-          style={{ border: `${Math.max(1, borderWidth / 2)}px solid ${stroke}`, background }}
-        />
+        <div className="absolute inset-0 translate-x-1.5 translate-y-1.5 rounded-lg" style={{ border: box.border, background: box.background }} />
       )}
       <div
         className={cn(
           'relative flex h-full flex-col gap-1 overflow-hidden rounded-lg px-3 py-2.5 shadow-sm transition-shadow',
           selected && 'ring-2 ring-[var(--sketch-blue)] ring-offset-2 ring-offset-[var(--canvas)]',
         )}
-        style={{ border: `${borderWidth}px solid ${stroke}`, background, color: 'var(--sketch-ink)' }}
+        style={box}
       >
         <div className="flex items-start justify-between gap-2">
-          <div className="line-clamp-2 font-medium leading-snug" style={{ color: stroke }}>
+          <div className="line-clamp-2 font-medium leading-snug">
             {model.title || 'Sans titre'}
           </div>
           {model.bookmarkedAt && (
-            <Bookmark className="size-4 shrink-0 fill-current" style={{ color: stroke }} aria-label="Favori" />
+            <Bookmark className="size-4 shrink-0 fill-current" aria-label="Favori" />
           )}
         </div>
         {preview.map((p) => (

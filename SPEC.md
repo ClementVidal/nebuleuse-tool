@@ -19,8 +19,8 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 ### Nœud
 - Instance d'un **template** du projet.
 - Possède toujours un **titre**, plus les **valeurs des champs** définis par son template.
-- Style par défaut hérité du template (couleur de trait, couleur de fond, épaisseur de bordure),
-  **surchargeable par nœud**.
+- Style **entièrement défini par son template** (tous les nœuds d'un template le partagent,
+  pas de surcharge par nœud).
 - Position et dimensions libres (redimensionnable).
 - Tout nœud est **navigable** : l'ouvrir crée (à la demande) sa carte enfant.
 
@@ -28,8 +28,11 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 - Liste de templates propre à chaque projet : **ajouter, renommer, éditer, supprimer**.
 - Templates créés par défaut avec un nouveau projet : `Note`, `Réflexion`, `Research`.
 - Un template définit :
-  - un **style** : couleur de trait et couleur de fond choisies dans une palette limitée,
-    épaisseur de bordure (fine / moyenne / épaisse) ;
+  - un **style** (modifiable uniquement dans l'éditeur de templates) :
+    - **une seule couleur** (palette limitée) qui donne à la fois la couleur du texte, de la bordure
+      et un fond atténué ;
+    - épaisseur de bordure (fine / moyenne / épaisse) ;
+    - contour plein ou pointillé ;
   - une liste ordonnée de **champs** : `{ id, label, type }` avec
     `type ∈ { richtext, date, number }`.
 - Un template utilisé par au moins un nœud ne peut pas être supprimé (v1).
@@ -74,6 +77,11 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
   une icône le signale sur l'idée.
 - Bouton favoris dans la barre flottante du canvas (et groupe « Favoris » dans la palette) :
   choisir un favori ouvre la bonne carte, sélectionne l'idée et centre la vue dessus.
+
+### Retour arrière
+- Chaque navigation (entrer, remonter, favori, recherche…) crée une étape d'historique.
+- Glisser depuis le bord gauche de l'écran vers la droite (mobile) — ou le bouton « précédent »
+  du navigateur — revient à la position précédente : carte précédente et vue telle qu'on l'avait laissée.
 
 ### Souris
 - Double-clic sur le fond : créer un nœud.

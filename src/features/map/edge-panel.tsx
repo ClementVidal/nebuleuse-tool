@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { deleteEdges, updateEdge } from '@/db/actions'
-import { STROKE_COLORS } from '@/db/palette'
+import { COLORS } from '@/db/palette'
 import type { ArrowMode, EdgeDash, EdgePathKind, IdeaEdge } from '@/db/types'
 
 const ARROW_OPTIONS: { value: ArrowMode; label: string; icon: React.ReactNode }[] = [
@@ -48,7 +48,7 @@ export function EdgePanel({ edge }: { edge: IdeaEdge }) {
         </div>
         <div className="grid gap-1.5">
           <Label>Couleur</Label>
-          <ColorPicker colors={STROKE_COLORS} value={edge.color} onChange={(color) => set({ color })} />
+          <ColorPicker colors={COLORS} value={edge.color} onChange={(color) => set({ color })} />
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-3">
           <div className="grid gap-1.5">

@@ -57,6 +57,10 @@ export function MapPage({ projectId, mapId, focusNodeId }: MapPageProps) {
     })
   }, [navigate, parentNode, projectId])
 
+  const dropFocusFromUrl = useCallback(() => {
+    void navigate({ to: '/projects/$projectId/maps/$mapId', params: { projectId, mapId }, search: {}, replace: true })
+  }, [navigate, projectId, mapId])
+
   const selectTemplateIndex = useCallback(
     (index: number) => {
       const template = templates?.[index]
@@ -112,7 +116,7 @@ export function MapPage({ projectId, mapId, focusNodeId }: MapPageProps) {
         >
           {templates.map((t, i) => (
             <ToggleGroupItem key={t.id} value={t.id} title={`${t.name} (${i + 1})`} className="gap-1.5 px-2.5">
-              <span className="size-2.5 rounded-full border" style={{ background: colorCss(t.style.stroke) }} />
+              <span className="size-2.5 rounded-full border" style={{ background: colorCss(t.style.color) }} />
               {t.name}
             </ToggleGroupItem>
           ))}
@@ -172,6 +176,7 @@ export function MapPage({ projectId, mapId, focusNodeId }: MapPageProps) {
             onOpenNode={openNode}
             onNavigateUp={parentNode ? navigateUp : undefined}
             onSelectTemplateIndex={selectTemplateIndex}
+            onFocusConsumed={dropFocusFromUrl}
           />
         </ReactFlowProvider>
       </main>

@@ -9,25 +9,11 @@ export const PALETTE = {
   blue: { label: 'Bleu', css: 'var(--sketch-blue)' },
   orange: { label: 'Orange', css: 'var(--sketch-orange)' },
   violet: { label: 'Violet', css: 'var(--sketch-violet)' },
-  transparent: { label: 'Aucune', css: 'transparent' },
-  'red-soft': { label: 'Rouge pâle', css: 'var(--sketch-red-soft)' },
-  'green-soft': { label: 'Vert pâle', css: 'var(--sketch-green-soft)' },
-  'blue-soft': { label: 'Bleu pâle', css: 'var(--sketch-blue-soft)' },
-  'yellow-soft': { label: 'Jaune pâle', css: 'var(--sketch-yellow-soft)' },
-  'violet-soft': { label: 'Violet pâle', css: 'var(--sketch-violet-soft)' },
 } as const
 
 export type PaletteColor = keyof typeof PALETTE
 
-export const STROKE_COLORS: PaletteColor[] = ['ink', 'red', 'green', 'blue', 'orange', 'violet']
-export const BACKGROUND_COLORS: PaletteColor[] = [
-  'transparent',
-  'red-soft',
-  'green-soft',
-  'blue-soft',
-  'yellow-soft',
-  'violet-soft',
-]
+export const COLORS: PaletteColor[] = ['ink', 'red', 'green', 'blue', 'orange', 'violet']
 
 export const STROKE_WIDTHS = {
   thin: { label: 'Fine', px: 1 },
@@ -39,4 +25,9 @@ export type StrokeWidth = keyof typeof STROKE_WIDTHS
 
 export function colorCss(color: PaletteColor): string {
   return PALETTE[color]?.css ?? PALETTE.ink.css
+}
+
+/** A faint tint of a palette colour over the canvas, for node backgrounds. */
+export function dimmedColorCss(color: PaletteColor): string {
+  return `color-mix(in srgb, ${colorCss(color)} 14%, var(--canvas))`
 }

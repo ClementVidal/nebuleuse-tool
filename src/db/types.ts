@@ -8,10 +8,12 @@ export interface TemplateField {
   type: FieldType
 }
 
+/** Style shared by every node of a template (only editable in the template editor). */
 export interface NodeStyle {
-  stroke: PaletteColor
-  background: PaletteColor
+  /** Drives the text, the border and a dimmed background. */
+  color: PaletteColor
   strokeWidth: StrokeWidth
+  dashed: boolean
 }
 
 export interface NodeTemplate {
@@ -49,8 +51,6 @@ export interface IdeaNode {
   templateId: string
   title: string
   values: Record<string, FieldValue>
-  /** Per-node overrides of the template style. */
-  style?: Partial<NodeStyle>
   x: number
   y: number
   width: number

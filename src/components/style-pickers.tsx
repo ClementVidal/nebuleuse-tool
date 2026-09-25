@@ -24,10 +24,8 @@ export function ColorPicker({
           className={cn(
             'size-7 rounded-md border border-border outline-offset-2 transition-shadow',
             value === color && 'outline-2 outline-ring',
-            color === 'transparent' &&
-              'bg-[linear-gradient(45deg,transparent_45%,var(--destructive)_45%,var(--destructive)_55%,transparent_55%)]',
           )}
-          style={color === 'transparent' ? undefined : { background: colorCss(color) }}
+          style={{ background: colorCss(color) }}
         />
       ))}
     </div>

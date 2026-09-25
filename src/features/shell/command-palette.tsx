@@ -123,7 +123,7 @@ function PaletteContent() {
                 >
                   <span
                     className="size-2.5 shrink-0 rounded-full"
-                    style={{ background: template ? colorCss(template.style.stroke) : 'var(--muted-foreground)' }}
+                    style={{ background: template ? colorCss(template.style.color) : 'var(--muted-foreground)' }}
                   />
                   <span className="truncate">{node.title || 'Sans titre'}</span>
                   <span className="ml-auto truncate pl-4 text-xs text-muted-foreground">{location}</span>

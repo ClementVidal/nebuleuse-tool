@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowDown, ArrowLeft, ArrowUp, Plus, Trash2 } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import { useState } from 'react'
-import { ColorPicker, StrokeWidthPicker } from '@/components/style-pickers'
+import { ColorPicker, EnumPicker, StrokeWidthPicker } from '@/components/style-pickers'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,8 +13,9 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { createTemplate, countTemplateUsage, deleteTemplate, updateTemplate } from '@/db/actions'
 import { useProject, useTemplates } from '@/db/hooks'
-import { BACKGROUND_COLORS, colorCss, STROKE_COLORS } from '@/db/palette'
+import { colorCss, COLORS } from '@/db/palette'
 import type { FieldType, NodeStyle, NodeTemplate, TemplateField } from '@/db/types'
+import { nodeBoxStyle, templateStyle } from '@/features/map/node-style'
 import { cn } from '@/lib/utils'
 
 const FIELD_TYPES: { value: FieldType; label: string }[] = [
@@ -57,7 +58,7 @@ export function TemplatesPage({ projectId }: { projectId: string }) {
                 t.id === selectedId && 'bg-accent font-medium',
               )}
             >
-              <span className="size-3 rounded-full border" style={{ background: colorCss(t.style.stroke) }} />
+              <span className="size-3 rounded-full border" style={{ background: colorCss(t.style.color) }} />
               {t.name}
             </button>
           ))}
@@ -79,7 +80,8 @@ export function TemplatesPage({ projectId }: { projectId: string }) {
 
 function TemplateEditor({ template }: { template: NodeTemplate }) {
   const usage = useLiveQuery(() => countTemplateUsage(template.id), [template.id])
-  const setStyle = (changes: Partial<NodeStyle>) => updateTemplate(template.id, { style: { ...template.style, ...changes } })
+  const style = templateStyle(template)
+  const setStyle = (changes: Partial<NodeStyle>) => updateTemplate(template.id, { style: { ...style, ...changes } })
   const setFields = (fields: TemplateField[], coalesceKey?: string) => updateTemplate(template.id, { fields }, { coalesceKey })
   const updateField = (id: string, changes: Partial<TemplateField>, coalesceKey?: string) =>
     setFields(template.fields.map((f) => (f.id === id ? { ...f, ...changes } : f)), coalesceKey)
@@ -102,16 +104,33 @@ function TemplateEditor({ template }: { template: NodeTemplate }) {
             <Input id="template-name" defaultValue={template.name} onChange={(e) => updateTemplate(template.id, { name: e.target.value }, { coalesceKey: `template-name:${template.id}` })} />
           </div>
           <div className="grid gap-2">
-            <Label>Couleur du trait</Label>
-            <ColorPicker colors={STROKE_COLORS} value={template.style.stroke} onChange={(stroke) => setStyle({ stroke })} />
+            <Label>Couleur</Label>
+            <p className="-mt-1 text-xs text-muted-foreground">Texte, bordure et fond atténué de toutes les idées de ce template.</p>
+            <ColorPicker colors={COLORS} value={style.color} onChange={(color) => setStyle({ color })} />
+          </div>
+          <div className="flex flex-wrap gap-6">
+            <div className="grid gap-2">
+              <Label>Bordure</Label>
+              <StrokeWidthPicker value={style.strokeWidth} onChange={(strokeWidth) => setStyle({ strokeWidth })} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Contour</Label>
+              <EnumPicker
+                value={style.dashed ? 'dashed' : 'solid'}
+                onChange={(v) => setStyle({ dashed: v === 'dashed' })}
+                options={[
+                  { value: 'solid', label: 'Plein' },
+                  { value: 'dashed', label: 'Pointillé' },
+                ]}
+              />
+            </div>
           </div>
           <div className="grid gap-2">
-            <Label>Couleur de fond</Label>
-            <ColorPicker colors={BACKGROUND_COLORS} value={template.style.background} onChange={(background) => setStyle({ background })} />
-          </div>
-          <div className="grid gap-2">
-            <Label>Bordure</Label>
-            <StrokeWidthPicker value={template.style.strokeWidth} onChange={(strokeWidth) => setStyle({ strokeWidth })} />
+            <Label>Aperçu</Label>
+            <div className="flex h-24 w-56 flex-col gap-1 rounded-lg px-3 py-2.5 text-sm shadow-sm" style={nodeBoxStyle(style)}>
+              <span className="font-medium">Une idée</span>
+              <span className="mt-auto text-[11px] uppercase tracking-wide opacity-50">{template.name}</span>
+            </div>
           </div>
         </CardContent>
       </Card>
