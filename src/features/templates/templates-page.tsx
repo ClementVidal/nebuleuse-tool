@@ -80,9 +80,9 @@ export function TemplatesPage({ projectId }: { projectId: string }) {
 function TemplateEditor({ template }: { template: NodeTemplate }) {
   const usage = useLiveQuery(() => countTemplateUsage(template.id), [template.id])
   const setStyle = (changes: Partial<NodeStyle>) => updateTemplate(template.id, { style: { ...template.style, ...changes } })
-  const setFields = (fields: TemplateField[]) => updateTemplate(template.id, { fields })
-  const updateField = (id: string, changes: Partial<TemplateField>) =>
-    setFields(template.fields.map((f) => (f.id === id ? { ...f, ...changes } : f)))
+  const setFields = (fields: TemplateField[], coalesceKey?: string) => updateTemplate(template.id, { fields }, { coalesceKey })
+  const updateField = (id: string, changes: Partial<TemplateField>, coalesceKey?: string) =>
+    setFields(template.fields.map((f) => (f.id === id ? { ...f, ...changes } : f)), coalesceKey)
   const moveField = (index: number, delta: number) => {
     const fields = [...template.fields]
     const [field] = fields.splice(index, 1)
@@ -99,7 +99,7 @@ function TemplateEditor({ template }: { template: NodeTemplate }) {
         <CardContent className="grid gap-5">
           <div className="grid gap-2">
             <Label htmlFor="template-name">Nom</Label>
-            <Input id="template-name" defaultValue={template.name} onChange={(e) => updateTemplate(template.id, { name: e.target.value })} />
+            <Input id="template-name" defaultValue={template.name} onChange={(e) => updateTemplate(template.id, { name: e.target.value }, { coalesceKey: `template-name:${template.id}` })} />
           </div>
           <div className="grid gap-2">
             <Label>Couleur du trait</Label>
@@ -128,7 +128,7 @@ function TemplateEditor({ template }: { template: NodeTemplate }) {
                 className="min-w-40 flex-1"
                 aria-label="Nom du champ"
                 defaultValue={field.label}
-                onChange={(e) => updateField(field.id, { label: e.target.value })}
+                onChange={(e) => updateField(field.id, { label: e.target.value }, `field-label:${field.id}`)}
               />
               <Select value={field.type} onValueChange={(type) => updateField(field.id, { type: type as FieldType })}>
                 <SelectTrigger className="w-36" aria-label="Type du champ">

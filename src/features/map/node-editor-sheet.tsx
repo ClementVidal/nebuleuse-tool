@@ -48,7 +48,7 @@ function NodeEditor({ node, templates, onClose, onOpenNode }: Required<NodeEdito
             id="node-title"
             autoFocus
             defaultValue={node.title}
-            onChange={(e) => updateNode(node.id, { title: e.target.value })}
+            onChange={(e) => updateNode(node.id, { title: e.target.value }, { coalesceKey: `title:${node.id}` })}
             onFocus={(e) => e.target.select()}
             onKeyDown={(e) => e.key === 'Enter' && onClose()}
           />

@@ -1,5 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useSyncExternalStore } from 'react'
 import { db } from './db'
+import { canRedo, canUndo, historyVersion, subscribeHistory } from './history'
 import type { IdeaNode, Project } from './types'
 
 export function useProjects() {
@@ -48,4 +50,36 @@ export function useBreadcrumb(project: Project | null | undefined, mapId: string
     }
     return chain
   }, [project, mapId])
+}
+
+/** Undo / redo availability for a project, re-rendering when the history changes. */
+export function useHistoryState(projectId: string | undefined) {
+  useSyncExternalStore(subscribeHistory, historyVersion)
+  return {
+    canUndo: projectId ? canUndo(projectId) : false,
+    canRedo: projectId ? canRedo(projectId) : false,
+  }
+}
+
+export interface SearchableNode {
+  node: IdeaNode
+  /** Label of the map the node lives in (owner node title, or project name for the root map). */
+  location: string
+}
+
+/** Every node of a project, with where it lives — for the command palette. */
+export function useProjectNodes(project: Project | null | undefined, enabled: boolean) {
+  return useLiveQuery(async (): Promise<SearchableNode[]> => {
+    if (!project || !enabled) return []
+    const [nodes, maps] = await Promise.all([
+      db.nodes.where({ projectId: project.id }).toArray(),
+      db.maps.where({ projectId: project.id }).toArray(),
+    ])
+    const titles = new Map(nodes.map((n) => [n.id, n.title]))
+    const mapOwner = new Map(maps.map((m) => [m.id, m.parentNodeId]))
+    return nodes.map((node) => {
+      const owner = mapOwner.get(node.mapId)
+      return { node, location: owner ? (titles.get(owner) ?? '…') : project.name }
+    })
+  }, [project, enabled])
 }

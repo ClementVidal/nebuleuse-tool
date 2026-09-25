@@ -18,11 +18,13 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createEdge, createNode, deleteEdges, deleteNodes, saveViewport, updateNodePositions } from '@/db/actions'
 import { DEFAULT_NODE_SIZE } from '@/db/defaults'
+import { record } from '@/db/history'
 import { useMapEdges, useMapNodes } from '@/db/hooks'
 import type { IdeaNode, NodeTemplate, ReflexionMap } from '@/db/types'
 import { EdgePanel } from './edge-panel'
 import { center } from './geometry'
 import { IdeaNodeComponent, type IdeaFlowNode } from './idea-node'
+import { onMapCommand } from './map-commands'
 import { MapContext, type MapActions } from './map-context'
 import { NodeEditorSheet } from './node-editor-sheet'
 import { LinkEdgeComponent, type LinkFlowEdge } from './link-edge'
@@ -129,8 +131,10 @@ export function MapCanvas({
   }, [])
 
   const onDelete: OnDelete<IdeaFlowNode, LinkFlowEdge> = useCallback(({ nodes: deletedNodes, edges: deletedEdges }) => {
-    if (deletedNodes.length) void deleteNodes(deletedNodes.map((n) => n.id))
-    if (deletedEdges.length) void deleteEdges(deletedEdges.map((e) => e.id))
+    void record(async () => {
+      if (deletedNodes.length) await deleteNodes(deletedNodes.map((n) => n.id))
+      if (deletedEdges.length) await deleteEdges(deletedEdges.map((e) => e.id))
+    })
   }, [])
 
   const onConnect = useCallback(
@@ -145,10 +149,13 @@ export function MapCanvas({
 
   // --- Creation helpers
   const addNode = useCallback(
-    async (position: { x: number; y: number }, linkFrom?: string) => {
-      if (!activeTemplateId) return
-      const node = await createNode({ projectId: map.projectId, mapId: map.id, templateId: activeTemplateId, ...position })
-      if (linkFrom) await createEdge({ projectId: map.projectId, mapId: map.id, source: linkFrom, target: node.id })
+    async (position: { x: number; y: number }, linkFrom?: string, templateId = activeTemplateId) => {
+      if (!templateId) return
+      const node = await record(async () => {
+        const created = await createNode({ projectId: map.projectId, mapId: map.id, templateId, ...position })
+        if (linkFrom) await createEdge({ projectId: map.projectId, mapId: map.id, source: linkFrom, target: created.id })
+        return created
+      })
       pendingSelection.current = node.id
       setEditingNodeId(node.id)
     },
@@ -156,9 +163,9 @@ export function MapCanvas({
   )
 
   const addNodeAtScreen = useCallback(
-    (clientX: number, clientY: number) => {
+    (clientX: number, clientY: number, templateId?: string) => {
       const p = rf.screenToFlowPosition({ x: clientX, y: clientY })
-      void addNode({ x: p.x - DEFAULT_NODE_SIZE.width / 2, y: p.y - DEFAULT_NODE_SIZE.height / 2 })
+      void addNode({ x: p.x - DEFAULT_NODE_SIZE.width / 2, y: p.y - DEFAULT_NODE_SIZE.height / 2 }, undefined, templateId)
     },
     [rf, addNode],
   )
@@ -167,6 +174,19 @@ export function MapCanvas({
     const r = wrapperRef.current?.getBoundingClientRect()
     return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : { x: innerWidth / 2, y: innerHeight / 2 }
   }, [])
+
+  // Commands from the command palette.
+  useEffect(
+    () =>
+      onMapCommand((command) => {
+        if (command.type === 'navigate-up') onNavigateUp?.()
+        if (command.type === 'create-node') {
+          const c = viewportCenterScreen()
+          addNodeAtScreen(c.x, c.y, command.templateId)
+        }
+      }),
+    [onNavigateUp, viewportCenterScreen, addNodeAtScreen],
+  )
 
   // --- Selection helpers
   const selectOnly = useCallback(
@@ -187,6 +207,15 @@ export function MapCanvas({
     },
     [rf],
   )
+
+  // Select and reveal the focused node (from the URL) once React Flow has measured it.
+  const focusDone = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (!focusNodeId || focusDone.current === focusNodeId) return
+    if (!rf.getInternalNode(focusNodeId)?.measured.width) return
+    focusDone.current = focusNodeId
+    selectOnly(focusNodeId)
+  }, [focusNodeId, nodes, rf, selectOnly])
 
   const nodeRects = useCallback(
     () => nodes.map((n) => ({ id: n.id, x: n.position.x, y: n.position.y, width: n.width ?? 0, height: n.height ?? 0 })),

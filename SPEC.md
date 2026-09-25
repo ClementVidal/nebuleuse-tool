@@ -60,6 +60,9 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 ### Clavier
 | Touche | Action |
 |---|---|
+| `Ctrl+K` | palette de commandes |
+| `Ctrl+Z` | annuler |
+| `Ctrl+Maj+Z` / `Ctrl+Y` | rétablir |
 | `←` `↑` `→` `↓` | sélectionner le nœud voisin dans cette direction |
 | `Entrée` | entrer dans la carte du nœud sélectionné |
 | `Échap` / `Alt+↑` | remonter à la carte parente |
@@ -68,12 +71,27 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 | `Tab` | nouveau nœud relié au nœud sélectionné |
 | `Suppr` / `Retour arrière` | supprimer la sélection |
 
+### Annuler / rétablir
+- Toute modification du contenu d'un projet est annulable : nœuds, liens, déplacements,
+  redimensionnements, templates, suppressions en cascade (une idée supprimée revient avec
+  toute sa sous-carte).
+- Une saisie continue dans un même champ (titre, label, texte riche…) compte comme une seule étape.
+- Historique en mémoire, propre à chaque projet (perdu au rechargement de la page).
+- Non annulables : création / renommage / suppression d'un projet, vue (zoom, position).
+- Dans un champ texte, `Ctrl+Z` garde le comportement natif du champ.
+
+### Palette de commandes (`Ctrl+K`)
+- Recherche dans toutes les idées du projet (titre, champs texte riche, carte où elle se trouve) :
+  choisir un résultat ouvre sa carte et sélectionne l'idée.
+- Actions : nouvelle idée (par template), remonter, carte racine, annuler, rétablir,
+  templates du projet.
+- Changer de projet, revenir à la liste des projets, choisir le thème.
+
 ## Données
 - **Local-first** : tout est stocké dans le navigateur (IndexedDB via Dexie).
 - La couche d'accès (`src/db`) est isolée pour permettre plus tard une synchronisation serveur.
 
 ## Hors v1 (plus tard)
-- Annuler / rétablir, recherche globale, palette de commandes (`Ctrl+K`).
 - Export / import JSON d'un projet.
 - Une carte atteignable depuis plusieurs nœuds (graphe plutôt qu'arbre).
 - Synchronisation serveur / multi-utilisateurs.

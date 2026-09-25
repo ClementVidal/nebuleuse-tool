@@ -39,7 +39,7 @@ export function EdgePanel({ edge }: { edge: IdeaEdge }) {
             id="edge-label"
             placeholder="Relation…"
             defaultValue={edge.label}
-            onChange={(e) => set({ label: e.target.value })}
+            onChange={(e) => updateEdge(edge.id, { label: e.target.value }, { coalesceKey: `edge-label:${edge.id}` })}
           />
         </div>
         <div className="grid gap-1.5">

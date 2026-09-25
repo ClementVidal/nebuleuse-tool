@@ -1,6 +1,6 @@
 import { Link, Navigate, useNavigate } from '@tanstack/react-router'
 import { ReactFlowProvider } from '@xyflow/react'
-import { House, Shapes } from 'lucide-react'
+import { House, Redo2, Search, Shapes, Undo2 } from 'lucide-react'
 import { Fragment, useCallback, useState } from 'react'
 import { ThemeToggle } from '@/components/theme-toggle'
 import {
@@ -12,11 +12,14 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
+import { Kbd } from '@/components/ui/kbd'
 import { Separator } from '@/components/ui/separator'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ensureChildMap } from '@/db/actions'
-import { useBreadcrumb, useMap, useProject, useTemplates } from '@/db/hooks'
+import { redo, undo } from '@/db/history'
+import { useBreadcrumb, useHistoryState, useMap, useProject, useTemplates } from '@/db/hooks'
 import { colorCss } from '@/db/palette'
+import { setCommandPaletteOpen } from '@/features/shell/palette-store'
 import { KeyboardHelp } from './keyboard-help'
 import { MapCanvas } from './map-canvas'
 
@@ -32,6 +35,7 @@ export function MapPage({ projectId, mapId, focusNodeId }: MapPageProps) {
   const map = useMap(mapId)
   const templates = useTemplates(projectId)
   const breadcrumb = useBreadcrumb(project, mapId)
+  const history = useHistoryState(projectId)
   const [chosenTemplateId, setActiveTemplateId] = useState<string>()
   const activeTemplateId = templates?.some((t) => t.id === chosenTemplateId) ? chosenTemplateId : templates?.[0]?.id
 
@@ -113,6 +117,40 @@ export function MapPage({ projectId, mapId, focusNodeId }: MapPageProps) {
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
+        <Button
+          variant="ghost"
+          size="icon"
+          title="Annuler (Ctrl+Z)"
+          aria-label="Annuler"
+          disabled={!history.canUndo}
+          onClick={() => void undo(projectId)}
+        >
+          <Undo2 />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          title="Rétablir (Ctrl+Maj+Z)"
+          aria-label="Rétablir"
+          disabled={!history.canRedo}
+          onClick={() => void redo(projectId)}
+        >
+          <Redo2 />
+        </Button>
+        <Separator orientation="vertical" className="!h-5" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="hidden gap-2 text-muted-foreground md:flex"
+          onClick={() => setCommandPaletteOpen(true)}
+        >
+          <Search />
+          Rechercher
+          <Kbd>Ctrl K</Kbd>
+        </Button>
+        <Button variant="ghost" size="icon" className="md:hidden" aria-label="Rechercher" onClick={() => setCommandPaletteOpen(true)}>
+          <Search />
+        </Button>
         <Button variant="ghost" size="icon" asChild title="Templates du projet">
           <Link to="/projects/$projectId/templates" params={{ projectId }}>
             <Shapes />

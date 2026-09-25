@@ -1,11 +1,12 @@
-import { createRootRoute, createRoute, createRouter, Navigate, Outlet } from '@tanstack/react-router'
+import { createRootRoute, createRoute, createRouter, Navigate } from '@tanstack/react-router'
 import { useProject } from '@/db/hooks'
 import { MapPage } from '@/features/map/map-page'
 import { ProjectsPage } from '@/features/projects/projects-page'
+import { AppShell } from '@/features/shell/app-shell'
 import { TemplatesPage } from '@/features/templates/templates-page'
 
 const rootRoute = createRootRoute({
-  component: Outlet,
+  component: AppShell,
   notFoundComponent: () => <Navigate to="/" />,
 })
 

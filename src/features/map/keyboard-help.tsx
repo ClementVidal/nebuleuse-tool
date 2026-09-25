@@ -3,6 +3,9 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 const SHORTCUTS: [string, string][] = [
+  ['Ctrl+K', 'Palette : chercher une idée, une commande'],
+  ['Ctrl+Z', 'Annuler'],
+  ['Ctrl+Maj+Z · Ctrl+Y', 'Rétablir'],
   ['← ↑ → ↓', 'Sélectionner le nœud voisin'],
   ['Entrée', "Entrer dans l'idée sélectionnée"],
   ['Échap · Alt+↑', 'Remonter à la carte parente'],
