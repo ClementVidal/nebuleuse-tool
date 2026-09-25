@@ -15,7 +15,9 @@ import {
   type OnDelete,
   type Viewport,
 } from '@xyflow/react'
+import { Plus } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
 import { createEdge, createNode, deleteEdges, deleteNodes, saveViewport, updateNodePositions } from '@/db/actions'
 import { DEFAULT_NODE_SIZE } from '@/db/defaults'
 import { record } from '@/db/history'
@@ -75,6 +77,8 @@ export function MapCanvas({
   const [editingNodeId, setEditingNodeId] = useState<string>()
   /** Node to select once it shows up from the database (after creation / on open). */
   const pendingSelection = useRef<string | undefined>(focusNodeId)
+  const lastPointerType = useRef<string>('mouse')
+  const lastTap = useRef<{ time: number; x: number; y: number } | undefined>(undefined)
 
   // --- Database -> React Flow state. Previous node objects are spread first so React Flow's
   // own state (measured size, selection, drag/resize flags) survives: it doesn't re-measure
@@ -165,7 +169,18 @@ export function MapCanvas({
   const addNodeAtScreen = useCallback(
     (clientX: number, clientY: number, templateId?: string) => {
       const p = rf.screenToFlowPosition({ x: clientX, y: clientY })
-      void addNode({ x: p.x - DEFAULT_NODE_SIZE.width / 2, y: p.y - DEFAULT_NODE_SIZE.height / 2 }, undefined, templateId)
+      let x = p.x - DEFAULT_NODE_SIZE.width / 2
+      let y = p.y - DEFAULT_NODE_SIZE.height / 2
+      // Keep the new node fully inside the visible area (matters on small screens).
+      const r = wrapperRef.current?.getBoundingClientRect()
+      if (r) {
+        const margin = 12
+        const min = rf.screenToFlowPosition({ x: r.left + margin, y: r.top + margin })
+        const max = rf.screenToFlowPosition({ x: r.right - margin, y: r.bottom - margin })
+        x = Math.max(min.x, Math.min(x, max.x - DEFAULT_NODE_SIZE.width))
+        y = Math.max(min.y, Math.min(y, max.y - DEFAULT_NODE_SIZE.height))
+      }
+      void addNode({ x, y }, undefined, templateId)
     },
     [rf, addNode],
   )
@@ -312,7 +327,23 @@ export function MapCanvas({
         ref={wrapperRef}
         className="h-full w-full"
         onDoubleClick={(e) => {
+          // Touch double-taps are handled in onPointerUp: mobile browsers don't reliably emit dblclick.
+          if (lastPointerType.current === 'touch') return
           if ((e.target as HTMLElement).classList.contains('react-flow__pane')) addNodeAtScreen(e.clientX, e.clientY)
+        }}
+        onPointerDown={(e) => {
+          lastPointerType.current = e.pointerType
+        }}
+        onPointerUp={(e) => {
+          if (e.pointerType !== 'touch' || !(e.target as HTMLElement).classList.contains('react-flow__pane')) return
+          const last = lastTap.current
+          const now = e.timeStamp
+          if (last && now - last.time < 350 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 30) {
+            lastTap.current = undefined
+            addNodeAtScreen(e.clientX, e.clientY)
+          } else {
+            lastTap.current = { time: now, x: e.clientX, y: e.clientY }
+          }
         }}
       >
         <ReactFlow<IdeaFlowNode, LinkFlowEdge>
@@ -339,15 +370,39 @@ export function MapCanvas({
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
           <Controls showInteractive={false} position="bottom-left" />
-          <MiniMap pannable zoomable position="bottom-right" nodeColor="var(--sketch-blue-soft)" nodeStrokeColor="var(--sketch-ink)" />
+          <MiniMap
+            pannable
+            zoomable
+            position="bottom-right"
+            className="max-md:!hidden"
+            nodeColor="var(--sketch-blue-soft)"
+            nodeStrokeColor="var(--sketch-ink)"
+          />
+          {/* Touch screens have no N key: an explicit button to create an idea. */}
+          <Panel position="bottom-right" className="!mb-8 md:hidden">
+            <Button
+              size="icon"
+              className="size-12 rounded-full shadow-lg"
+              aria-label="Nouvelle idée"
+              onClick={() => {
+                const c = viewportCenterScreen()
+                addNodeAtScreen(c.x, c.y)
+              }}
+            >
+              <Plus className="size-6" />
+            </Button>
+          </Panel>
           {selectedEdge && (
             <Panel position="top-right">
               <EdgePanel edge={selectedEdge} />
             </Panel>
           )}
           {dbNodes.length === 0 && (
-            <Panel position="top-center" className="pointer-events-none mt-24 text-center text-muted-foreground">
-              Double-clique ou appuie sur <kbd className="rounded border px-1.5 font-sans text-sm">N</kbd> pour créer une idée
+            <Panel position="top-center" className="pointer-events-none mt-24 px-4 text-center text-muted-foreground">
+              <span className="max-md:hidden">
+                Double-clique ou appuie sur <kbd className="rounded border px-1.5 font-sans text-sm">N</kbd> pour créer une idée
+              </span>
+              <span className="md:hidden">Touche deux fois le fond ou le bouton + pour créer une idée</span>
             </Panel>
           )}
         </ReactFlow>

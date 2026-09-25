@@ -156,7 +156,9 @@ export function MapPage({ projectId, mapId, focusNodeId }: MapPageProps) {
             <Shapes />
           </Link>
         </Button>
-        <KeyboardHelp />
+        <div className="max-md:hidden">
+          <KeyboardHelp />
+        </div>
         <ThemeToggle />
       </header>
 

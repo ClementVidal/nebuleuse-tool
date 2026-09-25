@@ -36,17 +36,17 @@ export function TemplatesPage({ projectId }: { projectId: string }) {
   return (
     <div className="min-h-dvh">
       <header className="flex h-12 items-center gap-2 border-b px-2">
-        <Button variant="ghost" size="sm" asChild>
+        <Button variant="ghost" size="sm" asChild className="min-w-0 max-w-[60%]">
           <Link to="/projects/$projectId" params={{ projectId }}>
-            <ArrowLeft /> {project.name}
+            <ArrowLeft /> <span className="truncate">{project.name}</span>
           </Link>
         </Button>
-        <span className="flex-1 text-sm font-medium">Templates</span>
+        <span className="flex-1 truncate text-sm font-medium">Templates</span>
         <ThemeToggle />
       </header>
 
-      <main className="mx-auto grid max-w-5xl gap-6 px-4 py-6 md:grid-cols-[14rem_1fr]">
-        <nav className="grid content-start gap-1">
+      <main className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)] gap-6 px-4 py-6 md:grid-cols-[14rem_minmax(0,1fr)]">
+        <nav className="flex flex-wrap content-start gap-1 md:grid">
           {templates.map((t) => (
             <button
               key={t.id}
@@ -64,7 +64,7 @@ export function TemplatesPage({ projectId }: { projectId: string }) {
           <Button
             variant="outline"
             size="sm"
-            className="mt-2"
+            className="md:mt-2"
             onClick={async () => setSelectedId((await createTemplate(projectId, 'Nouveau template')).id)}
           >
             <Plus /> Ajouter un template
@@ -123,15 +123,15 @@ function TemplateEditor({ template }: { template: NodeTemplate }) {
         <CardContent className="grid gap-3">
           <p className="text-sm text-muted-foreground">Chaque idée a toujours un titre. Ajoute ici les champs propres à ce template.</p>
           {template.fields.map((field, index) => (
-            <div key={field.id} className="flex flex-wrap items-center gap-2">
+            <div key={field.id} className="flex flex-wrap items-center gap-2 border-b pb-3 last:border-b-0 sm:border-b-0 sm:pb-0">
               <Input
-                className="min-w-40 flex-1"
+                className="w-full sm:w-auto sm:min-w-40 sm:flex-1"
                 aria-label="Nom du champ"
                 defaultValue={field.label}
                 onChange={(e) => updateField(field.id, { label: e.target.value }, `field-label:${field.id}`)}
               />
               <Select value={field.type} onValueChange={(type) => updateField(field.id, { type: type as FieldType })}>
-                <SelectTrigger className="w-36" aria-label="Type du champ">
+                <SelectTrigger className="flex-1 sm:w-36 sm:flex-none" aria-label="Type du champ">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -178,7 +178,7 @@ function TemplateEditor({ template }: { template: NodeTemplate }) {
         </CardContent>
       </Card>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Button
           variant="outline"
           className="text-destructive"
@@ -188,7 +188,7 @@ function TemplateEditor({ template }: { template: NodeTemplate }) {
           <Trash2 /> Supprimer le template
         </Button>
         {usage !== undefined && usage > 0 && (
-          <Badge variant="secondary">
+          <Badge variant="secondary" className="whitespace-normal">
             Utilisé par {usage} idée{usage > 1 ? 's' : ''} : suppression impossible
           </Badge>
         )}
