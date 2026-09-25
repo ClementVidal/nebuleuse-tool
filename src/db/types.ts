@@ -57,6 +57,8 @@ export interface IdeaNode {
   height: number
   /** Map opened when entering this node; created lazily. */
   childMapId: string | null
+  /** Set when the node is bookmarked (timestamp, used to order bookmarks). */
+  bookmarkedAt?: number
 }
 
 export type ArrowMode = 'none' | 'start' | 'end' | 'both'

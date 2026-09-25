@@ -131,6 +131,10 @@ export async function updateNode(
   await record(() => db.nodes.update(nodeId, changes), options)
 }
 
+export async function setBookmarked(nodeId: string, bookmarked: boolean) {
+  await updateNode(nodeId, { bookmarkedAt: bookmarked ? Date.now() : undefined })
+}
+
 /** Updates a single field value without clobbering concurrent edits of other fields. */
 export async function updateNodeValue(nodeId: string, fieldId: string, value: FieldValue) {
   await record(() => db.nodes.update(nodeId, { [`values.${fieldId}`]: value }), { coalesceKey: `value:${nodeId}:${fieldId}` })

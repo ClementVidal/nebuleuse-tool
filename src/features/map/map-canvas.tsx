@@ -18,14 +18,16 @@ import {
 import { Plus } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { createEdge, createNode, deleteEdges, deleteNodes, saveViewport, updateNodePositions } from '@/db/actions'
+import { createEdge, createNode, deleteEdges, deleteNodes, saveViewport, setBookmarked, updateNodePositions } from '@/db/actions'
 import { DEFAULT_NODE_SIZE } from '@/db/defaults'
 import { record } from '@/db/history'
-import { useMapEdges, useMapNodes } from '@/db/hooks'
+import { useChildMapSizes, useMapEdges, useMapNodes } from '@/db/hooks'
 import type { IdeaNode, NodeTemplate, ReflexionMap } from '@/db/types'
 import { EdgePanel } from './edge-panel'
 import { center } from './geometry'
 import { IdeaNodeComponent, type IdeaFlowNode } from './idea-node'
+import { CanvasToolbar } from './canvas-toolbar'
+import { setCanvasLocked, useCanvasLocked } from './lock-store'
 import { onMapCommand } from './map-commands'
 import { MapContext, type MapActions } from './map-context'
 import { NodeEditorSheet } from './node-editor-sheet'
@@ -72,6 +74,8 @@ export function MapCanvas({
   const wrapperRef = useRef<HTMLDivElement>(null)
   const dbNodes = useMapNodes(map.id)
   const dbEdges = useMapEdges(map.id)
+  const childMapSizes = useChildMapSizes(dbNodes)
+  const locked = useCanvasLocked()
   const [nodes, setNodes] = useState<IdeaFlowNode[]>([])
   const [edges, setEdges] = useState<LinkFlowEdge[]>([])
   const [editingNodeId, setEditingNodeId] = useState<string>()
@@ -205,7 +209,7 @@ export function MapCanvas({
 
   // --- Selection helpers
   const selectOnly = useCallback(
-    (nodeId: string) => {
+    (nodeId: string, { center: forceCenter = false }: { center?: boolean } = {}) => {
       setNodes((ns) => ns.map((n) => ({ ...n, selected: n.id === nodeId })))
       setEdges((es) => es.map((e) => (e.selected ? { ...e, selected: false } : e)))
       const node = rf.getInternalNode(nodeId)
@@ -215,9 +219,9 @@ export function MapCanvas({
       const topLeft = rf.flowToScreenPosition(rect)
       const bottomRight = rf.flowToScreenPosition({ x: rect.x + rect.width, y: rect.y + rect.height })
       const visible = topLeft.x >= wrapper.left && topLeft.y >= wrapper.top && bottomRight.x <= wrapper.right && bottomRight.y <= wrapper.bottom
-      if (!visible) {
+      if (forceCenter || !visible) {
         const c = center(rect)
-        void rf.setCenter(c.x, c.y, { zoom: rf.getZoom(), duration: 250 })
+        void rf.setCenter(c.x, c.y, { zoom: Math.max(rf.getZoom(), 0.8), duration: 350 })
       }
     },
     [rf],
@@ -229,8 +233,27 @@ export function MapCanvas({
     if (!focusNodeId || focusDone.current === focusNodeId) return
     if (!rf.getInternalNode(focusNodeId)?.measured.width) return
     focusDone.current = focusNodeId
-    selectOnly(focusNodeId)
+    selectOnly(focusNodeId, { center: true })
   }, [focusNodeId, nodes, rf, selectOnly])
+
+  // Focus requests for a node of this map (bookmarks, search) when the URL doesn't change.
+  useEffect(
+    () =>
+      onMapCommand((command) => {
+        if (command.type === 'focus-node') selectOnly(command.nodeId, { center: true })
+      }),
+    [selectOnly],
+  )
+
+  /** Double-click / double-tap on a node: edit it when locked, enter its map when unlocked. */
+  const activateNode = useCallback(
+    (nodeId: string) => {
+      if (locked) setEditingNodeId(nodeId)
+      else onOpenNode(nodeId)
+    },
+    [locked, onOpenNode],
+  )
+  const lastNodeTap = useRef<{ id: string; time: number } | undefined>(undefined)
 
   const nodeRects = useCallback(
     () => nodes.map((n) => ({ id: n.id, x: n.position.x, y: n.position.y, width: n.width ?? 0, height: n.height ?? 0 })),
@@ -285,6 +308,16 @@ export function MapCanvas({
             setEditingNodeId(selected.id)
           }
           break
+        case 'l':
+          event.preventDefault()
+          setCanvasLocked(!locked)
+          break
+        case 'b':
+          if (selected) {
+            event.preventDefault()
+            void setBookmarked(selected.id, !selected.data.model.bookmarkedAt)
+          }
+          break
         case 'n': {
           event.preventDefault()
           const c = viewportCenterScreen()
@@ -307,13 +340,19 @@ export function MapCanvas({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [nodes, editingNodeId, rf, selectOnly, nodeRects, viewportCenterScreen, addNode, addNodeAtScreen, onOpenNode, onNavigateUp, onSelectTemplateIndex])
+  }, [nodes, editingNodeId, rf, selectOnly, nodeRects, viewportCenterScreen, addNode, addNodeAtScreen, onOpenNode, onNavigateUp, onSelectTemplateIndex, locked])
 
   // --- Derived UI state
   const templatesById = useMemo(() => new Map(templates.map((t) => [t.id, t])), [templates])
   const actions: MapActions = useMemo(
-    () => ({ templates: templatesById, openNode: onOpenNode, editNode: setEditingNodeId }),
-    [templatesById, onOpenNode],
+    () => ({
+      templates: templatesById,
+      openNode: onOpenNode,
+      editNode: setEditingNodeId,
+      navigateUp: onNavigateUp,
+      childMapSizes: childMapSizes ?? new Map(),
+    }),
+    [templatesById, onOpenNode, onNavigateUp, childMapSizes],
   )
   const selectedEdges = edges.filter((e) => e.selected)
   const selectedEdge = selectedEdges.length === 1 && !nodes.some((n) => n.selected) ? selectedEdges[0].data?.model : undefined
@@ -357,7 +396,20 @@ export function MapCanvas({
           onDelete={onDelete}
           onConnect={onConnect}
           onMoveEnd={onMoveEnd}
-          onNodeDoubleClick={(_, node) => setEditingNodeId(node.id)}
+          onNodeDoubleClick={(_, node) => {
+            if (lastPointerType.current !== 'touch') activateNode(node.id)
+          }}
+          onNodeClick={(event, node) => {
+            // Touch double-tap on a node (mobile browsers don't reliably emit dblclick).
+            if (lastPointerType.current !== 'touch') return
+            const last = lastNodeTap.current
+            if (last?.id === node.id && event.timeStamp - last.time < 350) {
+              lastNodeTap.current = undefined
+              activateNode(node.id)
+            } else {
+              lastNodeTap.current = { id: node.id, time: event.timeStamp }
+            }
+          }}
           connectionMode={ConnectionMode.Loose}
           defaultViewport={map.viewport}
           fitView={!map.viewport}
@@ -370,6 +422,7 @@ export function MapCanvas({
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
           <Controls showInteractive={false} position="bottom-left" />
+          <CanvasToolbar projectId={map.projectId} />
           <MiniMap
             pannable
             zoomable
@@ -411,10 +464,6 @@ export function MapCanvas({
         node={editingNode}
         templates={templates}
         onClose={() => setEditingNodeId(undefined)}
-        onOpenNode={(id) => {
-          setEditingNodeId(undefined)
-          onOpenNode(id)
-        }}
       />
     </MapContext.Provider>
   )

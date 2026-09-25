@@ -1,5 +1,5 @@
 import { Handle, NodeResizer, Position, type Node, type NodeProps } from '@xyflow/react'
-import { CornerDownRight } from 'lucide-react'
+import { ArrowDown, ArrowUp, Bookmark } from 'lucide-react'
 import { memo, useMemo } from 'react'
 import { updateNode } from '@/db/actions'
 import { colorCss, STROKE_WIDTHS } from '@/db/palette'
@@ -13,13 +13,14 @@ export type IdeaFlowNode = Node<{ model: IdeaNodeModel }, 'idea'>
 
 function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<IdeaFlowNode>) {
   const { model } = data
-  const { templates, openNode } = useMapActions()
+  const { templates, openNode, navigateUp, childMapSizes } = useMapActions()
   const template = templates.get(model.templateId)
   const style = resolveNodeStyle(model, template)
   const stroke = colorCss(style.stroke)
   const borderWidth = STROKE_WIDTHS[style.strokeWidth].px
   const background = style.background === 'transparent' ? 'var(--canvas)' : colorCss(style.background)
-  const hasChildMap = model.childMapId !== null
+  const childSize = model.childMapId ? (childMapSizes.get(model.childMapId) ?? 0) : 0
+  const hasChildMap = childSize > 0
 
   const preview = useMemo(() => {
     if (!template) return []
@@ -59,17 +60,9 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
           <div className="line-clamp-2 font-medium leading-snug" style={{ color: stroke }}>
             {model.title || 'Sans titre'}
           </div>
-          <button
-            type="button"
-            title="Entrer dans cette idée (Entrée)"
-            className="nodrag shrink-0 rounded p-0.5 opacity-0 transition-opacity group-hover:opacity-60 hover:!opacity-100"
-            onClick={(e) => {
-              e.stopPropagation()
-              openNode(model.id)
-            }}
-          >
-            <CornerDownRight className="size-4" />
-          </button>
+          {model.bookmarkedAt && (
+            <Bookmark className="size-4 shrink-0 fill-current" style={{ color: stroke }} aria-label="Favori" />
+          )}
         </div>
         {preview.map((p) => (
           <div key={p.id} className="line-clamp-3 text-xs leading-snug opacity-80">
@@ -77,6 +70,38 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
           </div>
         ))}
         {template && <div className="mt-auto text-[11px] uppercase tracking-wide opacity-50">{template.name}</div>}
+      </div>
+
+      {/* Depth navigation: up to the parent map, down into this idea's own map. */}
+      <div className="nodrag nopan absolute top-0 left-full ml-1.5 flex flex-col overflow-hidden rounded-md border bg-background shadow-xs">
+        <button
+          type="button"
+          disabled={!navigateUp}
+          title={navigateUp ? 'Remonter à la carte parente' : 'Carte racine du projet'}
+          aria-label="Remonter à la carte parente"
+          className="flex size-6 items-center justify-center text-foreground hover:bg-accent disabled:text-muted-foreground/30 disabled:hover:bg-transparent"
+          onClick={(e) => {
+            e.stopPropagation()
+            navigateUp?.()
+          }}
+        >
+          <ArrowUp className="size-3.5" />
+        </button>
+        <button
+          type="button"
+          title={hasChildMap ? `Entrer dans l'idée (${childSize} idée${childSize > 1 ? 's' : ''})` : "Entrer dans l'idée (vide)"}
+          aria-label="Entrer dans l'idée"
+          className={cn(
+            'flex size-6 items-center justify-center border-t hover:bg-accent',
+            hasChildMap ? 'text-foreground' : 'text-muted-foreground/40 hover:text-foreground',
+          )}
+          onClick={(e) => {
+            e.stopPropagation()
+            openNode(model.id)
+          }}
+        >
+          <ArrowDown className="size-3.5" />
+        </button>
       </div>
 
       <Handle type="source" position={Position.Top} id="top" />

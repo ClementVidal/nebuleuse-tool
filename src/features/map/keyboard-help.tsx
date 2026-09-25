@@ -13,8 +13,11 @@ const SHORTCUTS: [string, string][] = [
   ['N', 'Nouvelle idée au centre'],
   ['Tab', 'Nouvelle idée reliée à la sélection'],
   ['1 … 9', 'Choisir le template de création'],
+  ['B', 'Ajouter / retirer la sélection des favoris'],
+  ['L', 'Verrouiller / déverrouiller'],
   ['Suppr', 'Supprimer la sélection'],
-  ['Double-clic', 'Créer (fond) · éditer (nœud)'],
+  ['Double-clic fond', 'Créer une idée'],
+  ['Double-clic idée', 'Éditer (verrouillé) · entrer (déverrouillé)'],
 ]
 
 export function KeyboardHelp() {

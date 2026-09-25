@@ -83,3 +83,36 @@ export function useProjectNodes(project: Project | null | undefined, enabled: bo
     })
   }, [project, enabled])
 }
+
+export interface Bookmark {
+  node: IdeaNode
+  /** Label of the map the node lives in. */
+  location: string
+}
+
+/** Bookmarked nodes of a project, most recent first. */
+export function useBookmarks(project: Project | null | undefined) {
+  return useLiveQuery(async (): Promise<Bookmark[]> => {
+    if (!project) return []
+    const nodes = (await db.nodes.where({ projectId: project.id }).toArray())
+      .filter((n) => n.bookmarkedAt)
+      .sort((a, b) => b.bookmarkedAt! - a.bookmarkedAt!)
+    const maps = await db.maps.bulkGet([...new Set(nodes.map((n) => n.mapId))])
+    const owners = await db.nodes.bulkGet(maps.map((m) => m?.parentNodeId ?? ''))
+    const labelOf = new Map(maps.map((m, i) => [m?.id, owners[i]?.title ?? project.name]))
+    return nodes.map((node) => ({ node, location: labelOf.get(node.mapId) ?? project.name }))
+  }, [project])
+}
+
+/** For each node of a map that opens a child map, how many nodes that child map holds. */
+export function useChildMapSizes(nodes: IdeaNode[] | undefined) {
+  const childMapIds = (nodes ?? []).flatMap((n) => (n.childMapId ? [n.childMapId] : []))
+  const key = childMapIds.join(',')
+  return useLiveQuery(async () => {
+    const sizes = new Map<string, number>()
+    if (childMapIds.length === 0) return sizes
+    const children = await db.nodes.where('mapId').anyOf(childMapIds).toArray()
+    for (const child of children) sizes.set(child.mapId, (sizes.get(child.mapId) ?? 0) + 1)
+    return sizes
+  }, [key])
+}

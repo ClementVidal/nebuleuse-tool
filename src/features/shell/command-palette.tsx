@@ -2,7 +2,10 @@ import { useNavigate, useParams } from '@tanstack/react-router'
 import { defaultFilter } from 'cmdk'
 import {
   ArrowUp,
+  Bookmark,
   FolderOpen,
+  Lock,
+  LockOpen,
   House,
   Monitor,
   Moon,
@@ -25,9 +28,11 @@ import {
 } from '@/components/ui/command'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { redo, undo } from '@/db/history'
-import { useHistoryState, useMap, useProject, useProjectNodes, useProjects, useTemplates } from '@/db/hooks'
+import { useBookmarks, useHistoryState, useMap, useProject, useProjectNodes, useProjects, useTemplates } from '@/db/hooks'
 import { colorCss } from '@/db/palette'
+import { setCanvasLocked, useCanvasLocked } from '@/features/map/lock-store'
 import { sendMapCommand } from '@/features/map/map-commands'
+import { useGoToNode } from '@/features/map/use-go-to-node'
 import { markdownExcerpt } from '@/features/map/markdown'
 import { setTheme, THEME_LABELS, type Theme } from '@/lib/theme'
 import { setCommandPaletteOpen, useCommandPaletteOpen } from './palette-store'
@@ -65,6 +70,9 @@ function PaletteContent() {
   const projects = useProjects()
   const searchable = useProjectNodes(projectId ? project : null, true)
   const { canUndo, canRedo } = useHistoryState(projectId)
+  const bookmarks = useBookmarks(projectId ? project : null)
+  const goToNode = useGoToNode()
+  const locked = useCanvasLocked()
   const templateById = new Map(templates?.map((t) => [t.id, t]))
 
   const run = (action: () => unknown) => {
@@ -81,6 +89,23 @@ function PaletteContent() {
       <CommandList className="max-h-[min(60vh,420px)]">
         <CommandEmpty>Aucun résultat.</CommandEmpty>
 
+        {project && bookmarks && bookmarks.length > 0 && (
+          <CommandGroup heading="Favoris">
+            {bookmarks.map(({ node, location }) => (
+              <CommandItem
+                key={node.id}
+                value={`bookmark-${node.id}`}
+                keywords={['favori', node.title, location]}
+                onSelect={() => run(() => goToNode(node))}
+              >
+                <Bookmark className="fill-current" />
+                <span className="truncate">{node.title || 'Sans titre'}</span>
+                <span className="ml-auto truncate pl-4 text-xs text-muted-foreground">{location}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+
         {project && searchable && searchable.length > 0 && (
           <CommandGroup heading="Idées">
             {searchable.map(({ node, location }) => {
@@ -94,15 +119,7 @@ function PaletteContent() {
                   key={node.id}
                   value={node.id}
                   keywords={[node.title, excerpt ?? '', location]}
-                  onSelect={() =>
-                    run(() =>
-                      navigate({
-                        to: '/projects/$projectId/maps/$mapId',
-                        params: { projectId: project.id, mapId: node.mapId },
-                        search: { focus: node.id },
-                      }),
-                    )
-                  }
+                  onSelect={() => run(() => goToNode(node))}
                 >
                   <span
                     className="size-2.5 shrink-0 rounded-full"
@@ -145,6 +162,17 @@ function PaletteContent() {
               >
                 <House />
                 Aller à la carte racine
+              </CommandItem>
+            )}
+            {mapId && (
+              <CommandItem
+                value="lock"
+                keywords={['verrou', 'verrouiller', 'déverrouiller', 'double-clic']}
+                onSelect={() => run(() => setCanvasLocked(!locked))}
+              >
+                {locked ? <LockOpen /> : <Lock />}
+                {locked ? 'Déverrouiller : double-clic pour entrer' : 'Verrouiller : double-clic pour éditer'}
+                <CommandShortcut>L</CommandShortcut>
               </CommandItem>
             )}
             <CommandItem value="undo" keywords={['annuler', 'undo']} disabled={!canUndo} onSelect={() => run(() => undo(project.id))}>

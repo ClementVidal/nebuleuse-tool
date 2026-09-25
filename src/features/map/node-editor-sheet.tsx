@@ -1,4 +1,4 @@
-import { CornerDownRight, RotateCcw, Trash2 } from 'lucide-react'
+import { Bookmark, BookmarkCheck, RotateCcw, Trash2 } from 'lucide-react'
 import { ColorPicker, StrokeWidthPicker } from '@/components/style-pickers'
 import { RichTextEditor } from '@/components/rich-text-editor'
 import { Button } from '@/components/ui/button'
@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { deleteNodes, updateNode, updateNodeValue } from '@/db/actions'
+import { deleteNodes, setBookmarked, updateNode, updateNodeValue } from '@/db/actions'
 import { BACKGROUND_COLORS, STROKE_COLORS } from '@/db/palette'
 import type { IdeaNode, NodeStyle, NodeTemplate, TemplateField } from '@/db/types'
 import { resolveNodeStyle } from './node-style'
@@ -16,20 +16,19 @@ interface NodeEditorSheetProps {
   node: IdeaNode | undefined
   templates: NodeTemplate[]
   onClose: () => void
-  onOpenNode: (nodeId: string) => void
 }
 
-export function NodeEditorSheet({ node, templates, onClose, onOpenNode }: NodeEditorSheetProps) {
+export function NodeEditorSheet({ node, templates, onClose }: NodeEditorSheetProps) {
   return (
     <Sheet open={node !== undefined} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-full gap-0 sm:max-w-lg" onOpenAutoFocus={(e) => e.preventDefault()}>
-        {node && <NodeEditor key={node.id} node={node} templates={templates} onClose={onClose} onOpenNode={onOpenNode} />}
+        {node && <NodeEditor key={node.id} node={node} templates={templates} onClose={onClose} />}
       </SheetContent>
     </Sheet>
   )
 }
 
-function NodeEditor({ node, templates, onClose, onOpenNode }: Required<NodeEditorSheetProps> & { node: IdeaNode }) {
+function NodeEditor({ node, templates, onClose }: Required<NodeEditorSheetProps> & { node: IdeaNode }) {
   const template = templates.find((t) => t.id === node.templateId)
   const style = resolveNodeStyle(node, template)
   const setStyle = (changes: Partial<NodeStyle>) => updateNode(node.id, { style: { ...node.style, ...changes } })
@@ -111,8 +110,9 @@ function NodeEditor({ node, templates, onClose, onOpenNode }: Required<NodeEdito
         >
           <Trash2 /> Supprimer
         </Button>
-        <Button onClick={() => onOpenNode(node.id)}>
-          <CornerDownRight /> Entrer dans l'idée
+        <Button variant={node.bookmarkedAt ? 'secondary' : 'outline'} onClick={() => setBookmarked(node.id, !node.bookmarkedAt)}>
+          {node.bookmarkedAt ? <BookmarkCheck /> : <Bookmark />}
+          {node.bookmarkedAt ? 'Dans les favoris' : 'Ajouter aux favoris'}
         </Button>
       </SheetFooter>
     </>

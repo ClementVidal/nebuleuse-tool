@@ -51,10 +51,25 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 
 ## Navigation
 
+### Verrou (barre flottante du canvas)
+- **Verrouillé** (par défaut) : double-clic / double-tap sur une idée → ouvre son éditeur.
+- **Déverrouillé** : double-clic / double-tap sur une idée → entre directement dans sa carte.
+- Le choix est mémorisé dans le navigateur. Raccourci `L`.
+
+### Flèches de profondeur
+- À côté de chaque idée, deux flèches :
+  - ↑ active si l'idée est dans une carte imbriquée : remonte à la carte parente ;
+  - ↓ pleine si la carte de l'idée contient des idées, estompée si elle est vide : entre dans la carte.
+
+### Favoris
+- N'importe quelle idée peut être mise en favori (éditeur de l'idée, ou `B` sur la sélection) ;
+  une icône le signale sur l'idée.
+- Bouton favoris dans la barre flottante du canvas (et groupe « Favoris » dans la palette) :
+  choisir un favori ouvre la bonne carte, sélectionne l'idée et centre la vue dessus.
+
 ### Souris
 - Double-clic sur le fond : créer un nœud.
 - Glisser depuis le bord d'un nœud vers un autre : créer un lien.
-- Double-clic sur un nœud : éditer ; bouton « ouvrir » ou `Entrée` : entrer dans sa carte.
 - Clic sur un lien : l'éditer (flèches, label, couleur, épaisseur…).
 
 ### Clavier
@@ -69,6 +84,8 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 | `E` / `F2` | éditer le nœud sélectionné |
 | `N` | nouveau nœud au centre de la vue |
 | `Tab` | nouveau nœud relié au nœud sélectionné |
+| `B` | ajouter / retirer la sélection des favoris |
+| `L` | verrouiller / déverrouiller le canvas |
 | `Suppr` / `Retour arrière` | supprimer la sélection |
 
 ### Annuler / rétablir
