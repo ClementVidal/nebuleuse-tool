@@ -79,6 +79,8 @@ export function MapCanvas({
   const [nodes, setNodes] = useState<IdeaFlowNode[]>([])
   const [edges, setEdges] = useState<LinkFlowEdge[]>([])
   const [editingNodeId, setEditingNodeId] = useState<string>()
+  /** Node whose click menu is open. */
+  const [menuNodeId, setMenuNodeId] = useState<string>()
   /** Node to select once it shows up from the database (after creation / on open). */
   const pendingSelection = useRef<string | undefined>(focusNodeId)
   const lastPointerType = useRef<string>('mouse')
@@ -248,10 +250,26 @@ export function MapCanvas({
   /** Double-click / double-tap on a node: edit it when locked, enter its map when unlocked. */
   const activateNode = useCallback(
     (nodeId: string) => {
+      setMenuNodeId(undefined)
       if (locked) setEditingNodeId(nodeId)
       else onOpenNode(nodeId)
     },
     [locked, onOpenNode],
+  )
+
+  /** Select a node and animate the view onto it. */
+  const focusNode = useCallback(
+    (nodeId: string) => {
+      setMenuNodeId(undefined)
+      setNodes((ns) => ns.map((n) => ({ ...n, selected: n.id === nodeId })))
+      setEdges((es) => es.map((e) => (e.selected ? { ...e, selected: false } : e)))
+      const node = rf.getInternalNode(nodeId)
+      if (!node) return
+      const c = center({ ...node.internals.positionAbsolute, width: node.measured.width ?? 0, height: node.measured.height ?? 0 })
+      // Zoom in to reading size if zoomed out, never zoom out.
+      void rf.setCenter(c.x, c.y, { zoom: Math.max(rf.getZoom(), 1), duration: 400 })
+    },
+    [rf],
   )
   const lastNodeTap = useRef<{ id: string; time: number } | undefined>(undefined)
 
@@ -296,7 +314,10 @@ export function MapCanvas({
           }
           break
         case 'Escape':
-          if (onNavigateUp) {
+          if (menuNodeId) {
+            event.preventDefault()
+            setMenuNodeId(undefined)
+          } else if (onNavigateUp) {
             event.preventDefault()
             onNavigateUp()
           }
@@ -306,6 +327,12 @@ export function MapCanvas({
           if (selected) {
             event.preventDefault()
             setEditingNodeId(selected.id)
+          }
+          break
+        case 'f':
+          if (selected) {
+            event.preventDefault()
+            focusNode(selected.id)
           }
           break
         case 'l':
@@ -340,7 +367,7 @@ export function MapCanvas({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [nodes, editingNodeId, rf, selectOnly, nodeRects, viewportCenterScreen, addNode, addNodeAtScreen, onOpenNode, onNavigateUp, onSelectTemplateIndex, locked])
+  }, [nodes, editingNodeId, rf, selectOnly, nodeRects, viewportCenterScreen, addNode, addNodeAtScreen, onOpenNode, onNavigateUp, onSelectTemplateIndex, locked, menuNodeId, focusNode])
 
   // --- Derived UI state
   const templatesById = useMemo(() => new Map(templates.map((t) => [t.id, t])), [templates])
@@ -351,8 +378,12 @@ export function MapCanvas({
       editNode: setEditingNodeId,
       navigateUp: onNavigateUp,
       childMapSizes: childMapSizes ?? new Map(),
+      menuNodeId,
+      locked,
+      focusNode,
+      closeMenu: () => setMenuNodeId(undefined),
     }),
-    [templatesById, onOpenNode, onNavigateUp, childMapSizes],
+    [templatesById, onOpenNode, onNavigateUp, childMapSizes, menuNodeId, locked, focusNode],
   )
   const selectedEdges = edges.filter((e) => e.selected)
   const selectedEdge = selectedEdges.length === 1 && !nodes.some((n) => n.selected) ? selectedEdges[0].data?.model : undefined
@@ -396,10 +427,18 @@ export function MapCanvas({
           onDelete={onDelete}
           onConnect={onConnect}
           onMoveEnd={onMoveEnd}
+          onPaneClick={() => setMenuNodeId(undefined)}
+          onNodeDragStart={() => setMenuNodeId(undefined)}
+          onMoveStart={(event) => {
+            // Close the menu when the user pans or zooms (not on programmatic moves).
+            if (event) setMenuNodeId(undefined)
+          }}
           onNodeDoubleClick={(_, node) => {
             if (lastPointerType.current !== 'touch') activateNode(node.id)
           }}
           onNodeClick={(event, node) => {
+            // A plain click opens the node menu (focus / enter / edit).
+            if (!event.shiftKey && !event.metaKey && !event.ctrlKey) setMenuNodeId(node.id)
             // Touch double-tap on a node (mobile browsers don't reliably emit dblclick).
             if (lastPointerType.current !== 'touch') return
             const last = lastNodeTap.current

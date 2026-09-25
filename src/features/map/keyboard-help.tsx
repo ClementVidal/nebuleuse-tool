@@ -13,6 +13,8 @@ const SHORTCUTS: [string, string][] = [
   ['N', 'Nouvelle idée au centre'],
   ['Tab', 'Nouvelle idée reliée à la sélection'],
   ['1 … 9', 'Choisir le template de création'],
+  ['Clic idée', 'Menu : focus · entrer · éditer'],
+  ['F', 'Focus : centrer la vue sur la sélection'],
   ['B', 'Ajouter / retirer la sélection des favoris'],
   ['L', 'Verrouiller / déverrouiller'],
   ['Suppr', 'Supprimer la sélection'],

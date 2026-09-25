@@ -9,6 +9,11 @@ export interface MapActions {
   navigateUp: (() => void) | undefined
   /** Number of ideas in each child map, keyed by map id. */
   childMapSizes: Map<string, number>
+  /** Node whose click menu is open. */
+  menuNodeId: string | undefined
+  locked: boolean
+  focusNode: (nodeId: string) => void
+  closeMenu: () => void
 }
 
 export const MapContext = createContext<MapActions | null>(null)

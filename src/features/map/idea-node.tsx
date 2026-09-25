@@ -1,6 +1,7 @@
-import { Handle, NodeResizer, Position, type Node, type NodeProps } from '@xyflow/react'
-import { ArrowDown, ArrowUp, Bookmark } from 'lucide-react'
+import { Handle, NodeResizer, NodeToolbar, Position, type Node, type NodeProps } from '@xyflow/react'
+import { ArrowDown, ArrowUp, Bookmark, CornerDownRight, LocateFixed, Pencil } from 'lucide-react'
 import { memo, useMemo } from 'react'
+import { Button } from '@/components/ui/button'
 import { updateNode } from '@/db/actions'
 import { colorCss, STROKE_WIDTHS } from '@/db/palette'
 import type { IdeaNode as IdeaNodeModel } from '@/db/types'
@@ -13,7 +14,7 @@ export type IdeaFlowNode = Node<{ model: IdeaNodeModel }, 'idea'>
 
 function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<IdeaFlowNode>) {
   const { model } = data
-  const { templates, openNode, navigateUp, childMapSizes } = useMapActions()
+  const { templates, openNode, editNode, navigateUp, childMapSizes, menuNodeId, locked, focusNode, closeMenu } = useMapActions()
   const template = templates.get(model.templateId)
   const style = resolveNodeStyle(model, template)
   const stroke = colorCss(style.stroke)
@@ -103,6 +104,42 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
           <ArrowDown className="size-3.5" />
         </button>
       </div>
+
+      <NodeToolbar isVisible={menuNodeId === model.id} position={Position.Top} offset={10}>
+        <div
+          className="nodrag nopan nowheel flex items-center gap-0.5 rounded-lg border bg-popover p-1 text-popover-foreground shadow-md"
+          // Menu clicks must not reach the node (whose click handler reopens the menu).
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Button variant="ghost" size="sm" className="h-8" onClick={() => focusNode(model.id)}>
+            <LocateFixed /> Focus
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8"
+            onClick={() => {
+              closeMenu()
+              openNode(model.id)
+            }}
+          >
+            <CornerDownRight /> Entrer
+          </Button>
+          {locked && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              onClick={() => {
+                closeMenu()
+                editNode(model.id)
+              }}
+            >
+              <Pencil /> Éditer
+            </Button>
+          )}
+        </div>
+      </NodeToolbar>
 
       <Handle type="source" position={Position.Top} id="top" />
       <Handle type="source" position={Position.Right} id="right" />
