@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { ThemeToggle } from '@/components/theme-toggle'
 import {
@@ -29,14 +29,16 @@ export function ProjectsPage() {
   const [nameDialog, setNameDialog] = useState<NameDialogState>()
   const [toDelete, setToDelete] = useState<Project>()
 
+  /** Throws on failure so the dialog stays open and shows the error. */
   const submitName = async (name: string) => {
     if (!nameDialog) return
-    setNameDialog(undefined)
     if (nameDialog.mode === 'rename') {
       await renameProject(nameDialog.project.id, name)
+      setNameDialog(undefined)
       return
     }
     const project = await createProject(name)
+    setNameDialog(undefined)
     await navigate({ to: '/projects/$projectId/maps/$mapId', params: { projectId: project.id, mapId: project.rootMapId } })
   }
 
@@ -129,17 +131,38 @@ function NameDialog({
 }: {
   state: NameDialogState | undefined
   onCancel: () => void
-  onSubmit: (name: string) => void
+  onSubmit: (name: string) => Promise<void>
 }) {
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string>()
   return (
-    <Dialog open={state !== undefined} onOpenChange={(open) => !open && onCancel()}>
+    <Dialog
+      open={state !== undefined}
+      onOpenChange={(open) => {
+        if (open) return
+        setError(undefined)
+        onCancel()
+      }}
+    >
       <DialogContent>
         <form
           className="grid gap-4"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault()
             const name = String(new FormData(e.currentTarget).get('name') ?? '').trim()
-            if (name) onSubmit(name)
+            if (!name) {
+              setError('Donne un nom au projet.')
+              return
+            }
+            setPending(true)
+            setError(undefined)
+            try {
+              await onSubmit(name)
+            } catch (err) {
+              setError(`Le projet n’a pas pu être enregistré : ${err instanceof Error ? err.message : String(err)}`)
+            } finally {
+              setPending(false)
+            }
           }}
         >
           <DialogHeader>
@@ -150,12 +173,17 @@ function NameDialog({
             autoFocus
             placeholder="Nom du projet"
             defaultValue={state?.mode === 'rename' ? state.project.name : ''}
+            aria-invalid={error ? true : undefined}
           />
+          {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onCancel}>
               Annuler
             </Button>
-            <Button type="submit">{state?.mode === 'rename' ? 'Renommer' : 'Créer'}</Button>
+            <Button type="submit" disabled={pending}>
+              {pending && <Loader2 className="animate-spin" />}
+              {state?.mode === 'rename' ? 'Renommer' : 'Créer'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

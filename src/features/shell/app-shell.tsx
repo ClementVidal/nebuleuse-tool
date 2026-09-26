@@ -2,6 +2,7 @@ import { Outlet, useParams } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { redo, undo } from '@/db/history'
 import { CommandPalette } from './command-palette'
+import { DbGate } from './db-gate'
 import { setCommandPaletteOpen } from './palette-store'
 import { useSwipeBack } from './use-swipe-back'
 
@@ -41,9 +42,9 @@ export function AppShell() {
   }, [projectId])
 
   return (
-    <>
+    <DbGate>
       <Outlet />
       <CommandPalette />
-    </>
+    </DbGate>
   )
 }
