@@ -15,7 +15,7 @@ export function center(r: Rect): Point {
 }
 
 /** Point where the segment from the rect's center towards `toward` crosses the rect border, pushed out by `gap`. */
-export function borderPoint(r: Rect, toward: Point, gap = 6): Point {
+export function borderPoint(r: Rect, toward: Point, gap = EDGE_GAP): Point {
   const c = center(r)
   const dx = toward.x - c.x
   const dy = toward.y - c.y
@@ -26,12 +26,15 @@ export function borderPoint(r: Rect, toward: Point, gap = 6): Point {
   return { x: c.x + dx * scale, y: c.y + dy * scale }
 }
 
+/** Space left between an edge end and the node border. */
+const EDGE_GAP = 8
+
 export interface EdgeGeometry {
   path: string
   start: Point
   end: Point
-  /** Quadratic control point for curved edges. */
-  control: Point | null
+  /** Cubic control points for curved edges (null for straight ones). */
+  controls: [Point, Point] | null
   /** Direction the path leaves `start`, and arrives at `end` (unit vectors). */
   startDir: Point
   endDir: Point
@@ -43,37 +46,63 @@ function unit(p: Point): Point {
   return { x: p.x / len, y: p.y / len }
 }
 
-/** "Floating" edge between two node rects: anchored on the borders, straight or gently curved. */
+function cubicPath(start: Point, [c1, c2]: [Point, Point], end: Point) {
+  return `M ${start.x} ${start.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${end.x} ${end.y}`
+}
+
+/**
+ * Edge between two node rects.
+ * - straight: "floating" line between the borders, along the line joining the centers;
+ * - curved: leaves each node perpendicular to the side facing the other one and bends smoothly
+ *   (the connector style of Miro / Whimsical / React Flow bezier edges).
+ */
 export function edgeGeometry(source: Rect, target: Rect, curved: boolean): EdgeGeometry {
-  const start = borderPoint(source, center(target))
-  const end = borderPoint(target, center(source))
   if (!curved) {
+    const start = borderPoint(source, center(target))
+    const end = borderPoint(target, center(source))
     const dir = unit({ x: end.x - start.x, y: end.y - start.y })
     return {
       path: `M ${start.x} ${start.y} L ${end.x} ${end.y}`,
       start,
       end,
-      control: null,
+      controls: null,
       startDir: dir,
       endDir: dir,
       labelAt: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 },
     }
   }
-  // Quadratic curve bowed perpendicular to the chord, like Excalidraw's curved arrows.
-  const mid = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }
-  const chord = { x: end.x - start.x, y: end.y - start.y }
-  const bow = Math.min(80, Math.hypot(chord.x, chord.y) * 0.2)
-  const normal = unit({ x: -chord.y, y: chord.x })
-  const control = { x: mid.x + normal.x * bow, y: mid.y + normal.y * bow }
+
+  const sc = center(source)
+  const tc = center(target)
+  const dx = tc.x - sc.x
+  const dy = tc.y - sc.y
+  // Connect through the axis with the most free space between the two boxes.
+  const gapX = Math.abs(dx) - (source.width + target.width) / 2
+  const gapY = Math.abs(dy) - (source.height + target.height) / 2
+  const horizontal = gapX >= gapY
+  const sx = Math.sign(dx) || 1
+  const sy = Math.sign(dy) || 1
+  const startNormal = horizontal ? { x: sx, y: 0 } : { x: 0, y: sy }
+  const endNormal = { x: -startNormal.x, y: -startNormal.y }
+  const start = horizontal
+    ? { x: sc.x + sx * (source.width / 2 + EDGE_GAP), y: sc.y }
+    : { x: sc.x, y: sc.y + sy * (source.height / 2 + EDGE_GAP) }
+  const end = horizontal
+    ? { x: tc.x - sx * (target.width / 2 + EDGE_GAP), y: tc.y }
+    : { x: tc.x, y: tc.y - sy * (target.height / 2 + EDGE_GAP) }
+  const along = horizontal ? Math.abs(end.x - start.x) : Math.abs(end.y - start.y)
+  const pull = Math.max(30, Math.min(160, along * 0.5 + Math.abs(horizontal ? dy : dx) * 0.15))
+  const c1 = { x: start.x + startNormal.x * pull, y: start.y + startNormal.y * pull }
+  const c2 = { x: end.x + endNormal.x * pull, y: end.y + endNormal.y * pull }
   return {
-    path: `M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`,
+    path: cubicPath(start, [c1, c2], end),
     start,
     end,
-    control,
-    startDir: unit({ x: control.x - start.x, y: control.y - start.y }),
-    endDir: unit({ x: end.x - control.x, y: end.y - control.y }),
-    // Point at t = 0.5 on the quadratic curve.
-    labelAt: { x: (start.x + 2 * control.x + end.x) / 4, y: (start.y + 2 * control.y + end.y) / 4 },
+    controls: [c1, c2],
+    startDir: startNormal,
+    endDir: { x: -endNormal.x, y: -endNormal.y },
+    // Point at t = 0.5 on the cubic curve.
+    labelAt: { x: (start.x + 3 * c1.x + 3 * c2.x + end.x) / 8, y: (start.y + 3 * c1.y + 3 * c2.y + end.y) / 8 },
   }
 }
 
@@ -81,9 +110,7 @@ export function edgeGeometry(source: Rect, target: Rect, curved: boolean): EdgeG
 export function insetPath(g: EdgeGeometry, startInset: number, endInset: number): string {
   const start = { x: g.start.x + g.startDir.x * startInset, y: g.start.y + g.startDir.y * startInset }
   const end = { x: g.end.x - g.endDir.x * endInset, y: g.end.y - g.endDir.y * endInset }
-  return g.control
-    ? `M ${start.x} ${start.y} Q ${g.control.x} ${g.control.y} ${end.x} ${end.y}`
-    : `M ${start.x} ${start.y} L ${end.x} ${end.y}`
+  return g.controls ? cubicPath(start, g.controls, end) : `M ${start.x} ${start.y} L ${end.x} ${end.y}`
 }
 
 /** The two wing segments of an arrowhead whose tip is `tip`, pointing along `dir`. */

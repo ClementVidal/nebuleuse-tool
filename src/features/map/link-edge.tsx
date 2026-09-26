@@ -35,14 +35,15 @@ function LinkEdgeView({ source, target, data, selected }: EdgeProps<LinkFlowEdge
     if (!sourceNode || !targetNode || !model) return null
     const g = edgeGeometry(nodeRect(sourceNode), nodeRect(targetNode), model.path === 'curved')
     const width = STROKE_WIDTHS[model.strokeWidth].px
-    const headSize = 8 + width * 2
+    // Arrowhead proportional to the stroke, like tldraw / FigJam.
+    const headSize = 7 + width * 2.5
     const hasStart = model.arrows === 'start' || model.arrows === 'both'
     const hasEnd = model.arrows === 'end' || model.arrows === 'both'
     return {
       geometry: g,
       width,
       // The line stops at the arrowhead base so thick lines don't poke through the tip.
-      line: insetPath(g, hasStart ? headSize * 0.8 : 0, hasEnd ? headSize * 0.8 : 0),
+      line: insetPath(g, hasStart ? headSize * 0.7 : 0, hasEnd ? headSize * 0.7 : 0),
       heads: [
         ...(hasEnd ? [arrowhead(g.end, g.endDir, headSize)] : []),
         ...(hasStart ? [arrowhead(g.start, { x: -g.startDir.x, y: -g.startDir.y }, headSize)] : []),
@@ -51,16 +52,17 @@ function LinkEdgeView({ source, target, data, selected }: EdgeProps<LinkFlowEdge
   }, [sourceNode, targetNode, model])
 
   if (!shape || !model) return null
-  const color = colorCss(model.color)
+  // Slightly softened towards the canvas: arrows support the ideas without competing with them.
+  const color = `color-mix(in srgb, ${colorCss(model.color)} 78%, var(--canvas))`
 
   return (
     <>
-      {selected && (
-        <path
-          d={shape.geometry.path}
-          style={{ fill: 'none', stroke: 'var(--sketch-blue)', strokeOpacity: 0.25, strokeWidth: shape.width + 8, strokeLinecap: 'round' }}
-        />
-      )}
+      {/* Halo: shown on hover, stronger when selected (see .link-halo in index.css). */}
+      <path
+        d={shape.geometry.path}
+        className={selected ? 'link-halo link-halo-selected' : 'link-halo'}
+        style={{ fill: 'none', strokeWidth: shape.width + 10, strokeLinecap: 'round' }}
+      />
       <path
         d={shape.line}
         style={{
@@ -72,7 +74,7 @@ function LinkEdgeView({ source, target, data, selected }: EdgeProps<LinkFlowEdge
         }}
       />
       {shape.heads.map((d, i) => (
-        <path key={i} d={d} style={{ fill: color, stroke: color, strokeWidth: 1, strokeLinejoin: 'round' }} />
+        <path key={i} d={d} style={{ fill: color, stroke: color, strokeWidth: Math.max(1.5, shape.width * 0.75), strokeLinejoin: 'round' }} />
       ))}
       {/* Wide invisible path so thin edges stay easy to click. */}
       <path
@@ -83,7 +85,7 @@ function LinkEdgeView({ source, target, data, selected }: EdgeProps<LinkFlowEdge
       {model.label && (
         <EdgeLabelRenderer>
           <div
-            className="nodrag nopan pointer-events-auto absolute rounded-md border bg-background px-1.5 py-0.5 text-xs font-medium shadow-xs"
+            className="nodrag nopan pointer-events-auto absolute max-w-48 truncate rounded-full border border-border/60 bg-canvas px-2.5 py-0.5 text-xs font-medium shadow-xs"
             style={{
               transform: `translate(-50%, -50%) translate(${shape.geometry.labelAt.x}px, ${shape.geometry.labelAt.y}px)`,
               color,

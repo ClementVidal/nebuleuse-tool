@@ -137,6 +137,12 @@
   opacity: 1;
 }
 
+/* Edge halo: hover feedback, and selection state. */
+.link-halo { stroke: var(--sketch-blue); stroke-opacity: 0; transition: stroke-opacity 120ms; }
+.react-flow__edge:hover .link-halo { stroke-opacity: 0.12; }
+.link-halo.link-halo-selected,
+.react-flow__edge:hover .link-halo.link-halo-selected { stroke-opacity: 0.25; }
+
 /* Rich text rendered inside nodes: tuned for comfortable reading of long texts. */
 .node-prose {
   font-size: 14px;
