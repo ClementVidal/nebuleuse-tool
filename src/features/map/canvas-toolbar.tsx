@@ -1,5 +1,5 @@
 import { Panel } from '@xyflow/react'
-import { Bookmark, BookmarkX, Lock, LockOpen } from 'lucide-react'
+import { Bookmark, BookmarkX, Eye, Pencil } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -10,28 +10,28 @@ import { cn } from '@/lib/utils'
 import { setCanvasLocked, useCanvasLocked } from './lock-store'
 import { useGoToNode } from './use-go-to-node'
 
-/** Floating tools over the canvas: interaction lock and bookmarks. */
+/** Floating tools over the canvas (bottom right): navigation / edit mode and bookmarks. */
 export function CanvasToolbar({ projectId }: { projectId: string }) {
-  const locked = useCanvasLocked()
-  const lockLabel = locked
-    ? 'Verrouillé : double-clic sur une idée pour l’éditer (L)'
-    : 'Déverrouillé : double-clic sur une idée pour y entrer (L)'
+  const editMode = useCanvasLocked()
+  const modeLabel = editMode
+    ? 'Mode édition : double-clic sur une idée pour l’éditer (L pour passer en navigation)'
+    : 'Mode navigation : double-clic sur une idée pour y entrer (L pour passer en édition)'
 
   return (
-    <Panel position="top-left">
-      <div className="flex flex-col gap-0.5 rounded-lg border bg-background p-1 shadow-sm">
+    // Above the minimap on large screens (minimap: 150px high + 15px margin).
+    <Panel position="bottom-right" className="max-md:!mb-8 md:!mb-[176px]">
+      <div className="flex items-center gap-0.5 rounded-lg border bg-background p-1 shadow-sm">
         <Button
-          variant={locked ? 'secondary' : 'ghost'}
+          variant="ghost"
           size="icon"
           className="size-8"
-          title={lockLabel}
-          aria-label={lockLabel}
-          aria-pressed={locked}
-          onClick={() => setCanvasLocked(!locked)}
+          title={modeLabel}
+          aria-label={modeLabel}
+          onClick={() => setCanvasLocked(!editMode)}
         >
-          {locked ? <Lock /> : <LockOpen />}
+          {editMode ? <Pencil /> : <Eye />}
         </Button>
-        <Separator />
+        <Separator orientation="vertical" className="!h-5" />
         <BookmarksButton projectId={projectId} />
       </div>
     </Panel>
@@ -51,7 +51,7 @@ function BookmarksButton({ projectId }: { projectId: string }) {
           <Bookmark className={cn(bookmarks?.length && 'fill-current')} />
         </Button>
       </PopoverTrigger>
-      <PopoverContent side="right" align="start" className="w-72 p-1">
+      <PopoverContent side="top" align="end" className="w-72 p-1">
         <div className="px-2 pt-1.5 pb-1 text-xs font-medium text-muted-foreground">Favoris</div>
         {bookmarks?.length === 0 && (
           <p className="px-2 pb-2 text-sm text-muted-foreground">

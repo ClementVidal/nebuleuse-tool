@@ -16,10 +16,10 @@ const SHORTCUTS: [string, string][] = [
   ['Clic idée', 'Menu : focus · entrer · éditer'],
   ['F', 'Focus : centrer la vue sur la sélection'],
   ['B', 'Ajouter / retirer la sélection des favoris'],
-  ['L', 'Verrouiller / déverrouiller'],
+  ['L', 'Basculer mode navigation / édition'],
   ['Suppr', 'Supprimer la sélection'],
   ['Double-clic fond', 'Créer une idée'],
-  ['Double-clic idée', 'Éditer (verrouillé) · entrer (déverrouillé)'],
+  ['Double-clic idée', 'Entrer (navigation) · éditer (édition)'],
 ]
 
 export function KeyboardHelp() {

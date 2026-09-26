@@ -4,11 +4,11 @@ import {
   ArrowUp,
   Bookmark,
   FolderOpen,
-  Lock,
-  LockOpen,
+  Eye,
   House,
   Monitor,
   Moon,
+  Pencil,
   Plus,
   Redo2,
   Shapes,
@@ -167,11 +167,11 @@ function PaletteContent() {
             {mapId && (
               <CommandItem
                 value="lock"
-                keywords={['verrou', 'verrouiller', 'déverrouiller', 'double-clic']}
+                keywords={['mode', 'navigation', 'édition', 'double-clic']}
                 onSelect={() => run(() => setCanvasLocked(!locked))}
               >
-                {locked ? <LockOpen /> : <Lock />}
-                {locked ? 'Déverrouiller : double-clic pour entrer' : 'Verrouiller : double-clic pour éditer'}
+                {locked ? <Eye /> : <Pencil />}
+                {locked ? 'Mode navigation : double-clic pour entrer' : 'Mode édition : double-clic pour éditer'}
                 <CommandShortcut>L</CommandShortcut>
               </CommandItem>
             )}

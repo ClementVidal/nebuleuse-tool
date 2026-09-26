@@ -58,13 +58,13 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 - Un clic sur une idée ouvre un petit menu au-dessus d'elle :
   - **Focus** : sélectionne l'idée et centre la vue dessus (zoom de lecture si on est dézoomé) ;
   - **Entrer** : ouvre la carte de l'idée ;
-  - **Éditer** : ouvre l'éditeur (uniquement en mode verrouillé).
+  - **Éditer** : ouvre l'éditeur (uniquement en mode édition).
 - Le menu se ferme au clic sur le fond, avec `Échap`, en déplaçant une idée ou la vue.
 - Focus en deux clics : clic sur l'idée → Focus. Au clavier : `F` sur la sélection.
 
-### Verrou (barre flottante du canvas)
-- **Verrouillé** (par défaut) : double-clic / double-tap sur une idée → ouvre son éditeur.
-- **Déverrouillé** : double-clic / double-tap sur une idée → entre directement dans sa carte.
+### Mode navigation / édition (barre flottante en bas à droite du canvas)
+- **Mode édition** (icône crayon, par défaut) : double-clic / double-tap sur une idée → ouvre son éditeur.
+- **Mode navigation** (icône œil) : double-clic / double-tap sur une idée → entre directement dans sa carte.
 - Le choix est mémorisé dans le navigateur. Raccourci `L`.
 
 ### Flèches de profondeur
@@ -75,7 +75,7 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 ### Favoris
 - N'importe quelle idée peut être mise en favori (éditeur de l'idée, ou `B` sur la sélection) ;
   une icône le signale sur l'idée.
-- Bouton favoris dans la barre flottante du canvas (et groupe « Favoris » dans la palette) :
+- Bouton favoris dans la barre flottante du canvas (en bas à droite) (et groupe « Favoris » dans la palette) :
   choisir un favori ouvre la bonne carte, sélectionne l'idée et centre la vue dessus.
 
 ### Retour arrière
@@ -102,7 +102,7 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 | `Tab` | nouveau nœud relié au nœud sélectionné |
 | `F` | focus : centrer la vue sur la sélection |
 | `B` | ajouter / retirer la sélection des favoris |
-| `L` | verrouiller / déverrouiller le canvas |
+| `L` | basculer mode navigation / édition |
 | `Suppr` / `Retour arrière` | supprimer la sélection |
 
 ### Annuler / rétablir

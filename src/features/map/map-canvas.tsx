@@ -15,9 +15,7 @@ import {
   type OnDelete,
   type Viewport,
 } from '@xyflow/react'
-import { Plus } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { createEdge, createNode, deleteEdges, deleteNodes, saveViewport, setBookmarked, updateNodePositions } from '@/db/actions'
 import { DEFAULT_NODE_SIZE } from '@/db/defaults'
 import { colorCss, dimmedColorCss } from '@/db/palette'
@@ -479,20 +477,6 @@ export function MapCanvas({
             nodeColor={(n) => dimmedColorCss(templateStyle(templatesById.get(n.data.model.templateId)).color)}
             nodeStrokeColor={(n) => colorCss(templateStyle(templatesById.get(n.data.model.templateId)).color)}
           />
-          {/* Touch screens have no N key: an explicit button to create an idea. */}
-          <Panel position="bottom-right" className="!mb-8 md:hidden">
-            <Button
-              size="icon"
-              className="size-12 rounded-full shadow-lg"
-              aria-label="Nouvelle idée"
-              onClick={() => {
-                const c = viewportCenterScreen()
-                addNodeAtScreen(c.x, c.y)
-              }}
-            >
-              <Plus className="size-6" />
-            </Button>
-          </Panel>
           {selectedEdge && (
             <Panel position="top-right">
               <EdgePanel edge={selectedEdge} />
@@ -503,7 +487,7 @@ export function MapCanvas({
               <span className="max-md:hidden">
                 Double-clique ou appuie sur <kbd className="rounded border px-1.5 font-sans text-sm">N</kbd> pour créer une idée
               </span>
-              <span className="md:hidden">Touche deux fois le fond ou le bouton + pour créer une idée</span>
+              <span className="md:hidden">Touche deux fois le fond pour créer une idée</span>
             </Panel>
           )}
         </ReactFlow>

@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from 'react'
 
 /**
- * Canvas lock. Locked: double-clicking a node opens its editor.
- * Unlocked: double-clicking a node enters its nested map.
+ * Canvas interaction mode. "Locked" is edit mode (pencil icon): double-clicking a node opens its
+ * editor. Unlocked is navigation mode (eye icon): double-clicking a node enters its nested map.
  */
 const STORAGE_KEY = 'nebuleuse-canvas-locked'
 const listeners = new Set<() => void>()
