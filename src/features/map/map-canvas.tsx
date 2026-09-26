@@ -5,6 +5,7 @@ import {
   BackgroundVariant,
   ConnectionMode,
   Controls,
+  getViewportForBounds,
   MiniMap,
   Panel,
   ReactFlow,
@@ -245,6 +246,32 @@ export function MapCanvas({
     onFocusConsumed()
   }, [focusNodeId, nodes, rf, selectOnly, onFocusConsumed])
 
+  // When the map opens with none of its ideas in view (saved view from another screen size, or
+  // panned far away), fit the view to its content so opening a map never shows an empty screen.
+  const openCheckDone = useRef(false)
+  useEffect(() => {
+    if (openCheckDone.current || focusNodeId || !dbNodes) return
+    if (dbNodes.length === 0) {
+      openCheckDone.current = true
+      return
+    }
+    const internals = dbNodes.map((n) => rf.getInternalNode(n.id))
+    if (internals.some((n) => !n?.measured.width)) return // wait until every node is measured
+    openCheckDone.current = true
+    const wrapper = wrapperRef.current?.getBoundingClientRect()
+    if (!wrapper) return
+    const { x, y, zoom } = rf.getViewport()
+    const inView = internals.some((n) => {
+      const left = n!.internals.positionAbsolute.x * zoom + x
+      const top = n!.internals.positionAbsolute.y * zoom + y
+      return left < wrapper.width && left + n!.measured.width! * zoom > 0 && top < wrapper.height && top + n!.measured.height! * zoom > 0
+    })
+    if (!inView) {
+      const bounds = rf.getNodesBounds(dbNodes.map((n) => n.id))
+      void rf.setViewport(getViewportForBounds(bounds, wrapper.width, wrapper.height, 0.1, 1, 0.2))
+    }
+  }, [nodes, dbNodes, focusNodeId, rf])
+
   // Focus requests for a node of this map (bookmarks, search) when the URL doesn't change.
   useEffect(
     () =>
@@ -396,6 +423,12 @@ export function MapCanvas({
   const selectedEdge = selectedEdges.length === 1 && !nodes.some((n) => n.selected) ? selectedEdges[0].data?.model : undefined
   const editingNode: IdeaNode | undefined = dbNodes?.find((n) => n.id === editingNodeId)
 
+  // Ignore a corrupt saved view (e.g. NaN) rather than rendering an unusable canvas.
+  const savedViewport =
+    map.viewport && [map.viewport.x, map.viewport.y, map.viewport.zoom].every(Number.isFinite) && map.viewport.zoom > 0
+      ? map.viewport
+      : undefined
+
   if (!dbNodes || !dbEdges) return null
 
   return (
@@ -457,8 +490,8 @@ export function MapCanvas({
             }
           }}
           connectionMode={ConnectionMode.Loose}
-          defaultViewport={map.viewport}
-          fitView={!map.viewport}
+          defaultViewport={savedViewport}
+          fitView={!savedViewport}
           fitViewOptions={{ maxZoom: 1, padding: 0.3 }}
           zoomOnDoubleClick={false}
           disableKeyboardA11y

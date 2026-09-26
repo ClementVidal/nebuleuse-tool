@@ -3,6 +3,7 @@ import { useProject } from '@/db/hooks'
 import { MapPage } from '@/features/map/map-page'
 import { ProjectsPage } from '@/features/projects/projects-page'
 import { AppShell } from '@/features/shell/app-shell'
+import { ErrorPage } from '@/features/shell/error-page'
 import { TemplatesPage } from '@/features/templates/templates-page'
 
 const rootRoute = createRootRoute({
@@ -51,7 +52,7 @@ export const templatesRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([indexRoute, projectRoute, mapRoute, templatesRoute])
 
-export const router = createRouter({ routeTree })
+export const router = createRouter({ routeTree, defaultErrorComponent: ErrorPage })
 
 declare module '@tanstack/react-router' {
   interface Register {
