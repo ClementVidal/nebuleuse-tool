@@ -1,7 +1,7 @@
 import { nanoid } from 'nanoid'
 import type { IdeaEdge, NodeStyle, NodeTemplate } from './types'
 
-export const DEFAULT_NODE_SIZE = { width: 220, height: 120 }
+export const DEFAULT_NODE_SIZE = { width: 300, height: 200 }
 
 export const DEFAULT_NODE_STYLE: NodeStyle = {
   color: 'ink',

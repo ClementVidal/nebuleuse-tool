@@ -22,7 +22,7 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Rich
     contentType: 'markdown',
     onUpdate: ({ editor }) => onChange(editor.getMarkdown()),
     editorProps: {
-      attributes: { class: 'px-3 py-2 text-sm' },
+      attributes: { class: 'px-3 py-2' },
     },
   })
 

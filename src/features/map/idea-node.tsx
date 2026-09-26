@@ -6,27 +6,31 @@ import { updateNode } from '@/db/actions'
 import type { IdeaNode as IdeaNodeModel } from '@/db/types'
 import { cn } from '@/lib/utils'
 import { useMapActions } from './map-context'
-import { markdownExcerpt } from './markdown'
-import { nodeBoxStyle, templateStyle } from './node-style'
+import { markdownToHtml } from './markdown'
+import { nodeBoxStyle, nodeTitleColor, templateStyle } from './node-style'
 
 export type IdeaFlowNode = Node<{ model: IdeaNodeModel }, 'idea'>
+
+/** A rich-text field rendered as HTML, or a short "label : value" line for dates and numbers. */
+type NodeContent = { id: string; html: string } | { id: string; meta: string }
 
 function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<IdeaFlowNode>) {
   const { model } = data
   const { templates, openNode, editNode, navigateUp, childMapSizes, menuNodeId, locked, focusNode, closeMenu } = useMapActions()
   const template = templates.get(model.templateId)
-  const box = nodeBoxStyle(templateStyle(template))
+  const style = templateStyle(template)
+  const box = nodeBoxStyle(style)
   const childSize = model.childMapId ? (childMapSizes.get(model.childMapId) ?? 0) : 0
   const hasChildMap = childSize > 0
 
-  const preview = useMemo(() => {
+  const content = useMemo(() => {
     if (!template) return []
-    return template.fields.flatMap((field) => {
+    return template.fields.flatMap((field): NodeContent[] => {
       const value = model.values[field.id]
       if (value === null || value === undefined || value === '') return []
-      if (field.type === 'richtext') return [{ id: field.id, text: markdownExcerpt(String(value)) }]
-      if (field.type === 'date') return [{ id: field.id, text: `${field.label} : ${new Date(String(value)).toLocaleDateString('fr-FR')}` }]
-      return [{ id: field.id, text: `${field.label} : ${value}` }]
+      if (field.type === 'richtext') return [{ id: field.id, html: markdownToHtml(String(value)) }]
+      const text = field.type === 'date' ? new Date(String(value)).toLocaleDateString('fr-FR') : String(value)
+      return [{ id: field.id, meta: `${field.label} : ${text}` }]
     })
   }, [template, model.values])
 
@@ -45,25 +49,36 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
       )}
       <div
         className={cn(
-          'relative flex h-full flex-col gap-1 overflow-hidden rounded-lg px-3 py-2.5 shadow-sm transition-shadow',
+          'relative flex h-full flex-col gap-1.5 overflow-hidden rounded-lg px-3.5 py-3 shadow-sm transition-shadow',
           selected && 'ring-2 ring-[var(--sketch-blue)] ring-offset-2 ring-offset-[var(--canvas)]',
         )}
         style={box}
       >
-        <div className="flex items-start justify-between gap-2">
-          <div className="line-clamp-2 font-medium leading-snug">
-            {model.title || 'Sans titre'}
-          </div>
-          {model.bookmarkedAt && (
-            <Bookmark className="size-4 shrink-0 fill-current" aria-label="Favori" />
-          )}
+        <div className="flex shrink-0 items-start justify-between gap-2" style={{ color: nodeTitleColor(style) }}>
+          <div className="line-clamp-3 text-[15px] font-semibold leading-snug">{model.title || 'Sans titre'}</div>
+          {model.bookmarkedAt && <Bookmark className="mt-0.5 size-4 shrink-0 fill-current" aria-label="Favori" />}
         </div>
-        {preview.map((p) => (
-          <div key={p.id} className="line-clamp-3 text-xs leading-snug opacity-80">
-            {p.text}
+        {content.length > 0 && (
+          // Selected: the text scrolls with the wheel (nowheel keeps the canvas from zooming).
+          // Otherwise a fade at the bottom hints that there is more to read.
+          <div
+            className={cn(
+              'node-prose min-h-0 flex-1',
+              selected ? 'nowheel overflow-y-auto overscroll-contain' : 'overflow-hidden node-prose-fade',
+            )}
+          >
+            {content.map((c) =>
+              'html' in c ? (
+                <div key={c.id} dangerouslySetInnerHTML={{ __html: c.html }} />
+              ) : (
+                <p key={c.id} className="text-[13px] opacity-75">
+                  {c.meta}
+                </p>
+              ),
+            )}
           </div>
-        ))}
-        {template && <div className="mt-auto text-[11px] uppercase tracking-wide opacity-50">{template.name}</div>}
+        )}
+        {template && <div className="mt-auto shrink-0 pt-1 text-[11px] uppercase tracking-wide opacity-50">{template.name}</div>}
       </div>
 
       {/* Depth navigation: up to the parent map, down into this idea's own map. */}

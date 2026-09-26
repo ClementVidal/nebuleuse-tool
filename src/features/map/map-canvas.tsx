@@ -217,23 +217,38 @@ export function MapCanvas({
   )
 
   // --- Selection helpers
-  const selectOnly = useCallback(
+  /**
+   * Pans onto a node unless it's already fully visible — with room above it for the click menu
+   * and beside it for the depth arrows.
+   */
+  const revealNode = useCallback(
     (nodeId: string, { center: forceCenter = false }: { center?: boolean } = {}) => {
-      setNodes((ns) => ns.map((n) => ({ ...n, selected: n.id === nodeId })))
-      setEdges((es) => es.map((e) => (e.selected ? { ...e, selected: false } : e)))
       const node = rf.getInternalNode(nodeId)
       const wrapper = wrapperRef.current?.getBoundingClientRect()
       if (!node || !wrapper) return
       const rect = { ...node.internals.positionAbsolute, width: node.measured.width ?? 0, height: node.measured.height ?? 0 }
       const topLeft = rf.flowToScreenPosition(rect)
       const bottomRight = rf.flowToScreenPosition({ x: rect.x + rect.width, y: rect.y + rect.height })
-      const visible = topLeft.x >= wrapper.left && topLeft.y >= wrapper.top && bottomRight.x <= wrapper.right && bottomRight.y <= wrapper.bottom
+      const visible =
+        topLeft.x >= wrapper.left + 8 &&
+        topLeft.y >= wrapper.top + 56 &&
+        bottomRight.x <= wrapper.right - 40 &&
+        bottomRight.y <= wrapper.bottom - 8
       if (forceCenter || !visible) {
         const c = center(rect)
         void rf.setCenter(c.x, c.y, { zoom: Math.max(rf.getZoom(), 0.8), duration: 350 })
       }
     },
     [rf],
+  )
+
+  const selectOnly = useCallback(
+    (nodeId: string, options: { center?: boolean } = {}) => {
+      setNodes((ns) => ns.map((n) => ({ ...n, selected: n.id === nodeId })))
+      setEdges((es) => es.map((e) => (e.selected ? { ...e, selected: false } : e)))
+      revealNode(nodeId, options)
+    },
+    [revealNode],
   )
 
   // Select and reveal the focused node (from the URL) once React Flow has measured it.
@@ -477,8 +492,11 @@ export function MapCanvas({
             if (lastPointerType.current !== 'touch') activateNode(node.id)
           }}
           onNodeClick={(event, node) => {
-            // A plain click opens the node menu (focus / enter / edit).
-            if (!event.shiftKey && !event.metaKey && !event.ctrlKey) setMenuNodeId(node.id)
+            // A plain click opens the node menu (focus / enter / edit) and brings the node into view.
+            if (!event.shiftKey && !event.metaKey && !event.ctrlKey) {
+              setMenuNodeId(node.id)
+              revealNode(node.id)
+            }
             // Touch double-tap on a node (mobile browsers don't reliably emit dblclick).
             if (lastPointerType.current !== 'touch') return
             const last = lastNodeTap.current

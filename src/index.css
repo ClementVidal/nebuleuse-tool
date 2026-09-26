@@ -137,10 +137,37 @@
   opacity: 1;
 }
 
+/* Rich text rendered inside nodes: tuned for comfortable reading of long texts. */
+.node-prose {
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.node-prose > * + *,
+.node-prose div > * + * { margin-top: 0.6em; }
+.node-prose h1, .node-prose h2, .node-prose h3 { font-weight: 600; line-height: 1.3; }
+.node-prose h1 { font-size: 1.2em; }
+.node-prose h2 { font-size: 1.1em; }
+.node-prose h3 { font-size: 1em; }
+.node-prose ul { list-style: disc; padding-left: 1.2rem; }
+.node-prose ol { list-style: decimal; padding-left: 1.2rem; }
+.node-prose li + li { margin-top: 0.2em; }
+.node-prose blockquote { border-left: 3px solid currentColor; padding-left: 0.7rem; opacity: 0.8; }
+.node-prose code { font-size: 0.9em; background: color-mix(in srgb, currentColor 10%, transparent); border-radius: 0.25rem; padding: 0.1em 0.3em; }
+.node-prose pre { background: color-mix(in srgb, currentColor 8%, transparent); border-radius: 0.375rem; padding: 0.6rem; overflow-x: auto; }
+.node-prose pre code { background: none; padding: 0; }
+.node-prose a { text-decoration: underline; }
+.node-prose-fade {
+  mask-image: linear-gradient(to bottom, black calc(100% - 2.5rem), transparent);
+}
+
 /* Rich text (Tiptap) */
 .rich-text .ProseMirror {
-  min-height: 6rem;
+  min-height: 8rem;
   outline: none;
+  font-size: 15px;
+  line-height: 1.65;
 }
 .rich-text .ProseMirror > * + * { margin-top: 0.5em; }
 .rich-text .ProseMirror h1 { font-size: 1.4em; font-weight: 700; }
