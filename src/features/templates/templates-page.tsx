@@ -15,7 +15,7 @@ import { createTemplate, countTemplateUsage, deleteTemplate, updateTemplate } fr
 import { useProject, useTemplates } from '@/db/hooks'
 import { colorCss, COLORS } from '@/db/palette'
 import type { FieldType, NodeStyle, NodeTemplate, TemplateField } from '@/db/types'
-import { nodeBoxStyle, templateStyle } from '@/features/map/node-style'
+import { nodeBoxClass, nodeBoxStyle, templateStyle } from '@/features/map/node-style'
 import { cn } from '@/lib/utils'
 
 const FIELD_TYPES: { value: FieldType; label: string }[] = [
@@ -108,6 +108,17 @@ function TemplateEditor({ template }: { template: NodeTemplate }) {
             <p className="-mt-1 text-xs text-muted-foreground">Texte, bordure et fond atténué de toutes les idées de ce template.</p>
             <ColorPicker colors={COLORS} value={style.color} onChange={(color) => setStyle({ color })} />
           </div>
+          <div className="grid gap-2">
+            <Label>Forme</Label>
+            <EnumPicker
+              value={style.shape}
+              onChange={(shape) => setStyle({ shape })}
+              options={[
+                { value: 'card', label: 'Carte' },
+                { value: 'sticky', label: 'Post-it' },
+              ]}
+            />
+          </div>
           <div className="flex flex-wrap gap-6">
             <div className="grid gap-2">
               <Label>Bordure</Label>
@@ -127,7 +138,10 @@ function TemplateEditor({ template }: { template: NodeTemplate }) {
           </div>
           <div className="grid gap-2">
             <Label>Aperçu</Label>
-            <div className="flex h-24 w-56 flex-col gap-1 rounded-lg px-3 py-2.5 text-sm shadow-sm" style={nodeBoxStyle(style)}>
+            <div
+              className={cn('relative flex h-24 w-56 flex-col gap-1 rounded-lg px-3 py-2.5 text-sm shadow-sm', nodeBoxClass(style))}
+              style={nodeBoxStyle(style)}
+            >
               <span className="font-medium">Une idée</span>
               <span className="mt-auto text-[11px] uppercase tracking-wide opacity-50">{template.name}</span>
             </div>

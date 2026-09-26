@@ -7,6 +7,7 @@ export const DEFAULT_NODE_STYLE: NodeStyle = {
   color: 'ink',
   strokeWidth: 'medium',
   dashed: false,
+  shape: 'card',
 }
 
 export const DEFAULT_EDGE: Pick<IdeaEdge, 'label' | 'arrows' | 'color' | 'strokeWidth' | 'path' | 'dash'> = {
@@ -26,7 +27,7 @@ export function defaultTemplates(projectId: string): NodeTemplate[] {
       projectId,
       name: 'Note',
       order: 0,
-      style: { color: 'orange', strokeWidth: 'thin', dashed: false },
+      style: { color: 'orange', strokeWidth: 'thin', dashed: false, shape: 'sticky' },
       fields: [{ id: nanoid(), label: 'Contenu', type: 'richtext' }],
     },
     {
@@ -34,7 +35,7 @@ export function defaultTemplates(projectId: string): NodeTemplate[] {
       projectId,
       name: 'Réflexion',
       order: 1,
-      style: { color: 'blue', strokeWidth: 'medium', dashed: false },
+      style: { color: 'blue', strokeWidth: 'medium', dashed: false, shape: 'card' },
       fields: [
         { id: nanoid(), label: 'Contenu', type: 'richtext' },
         { id: nanoid(), label: 'Maturité (1-5)', type: 'number' },
@@ -45,7 +46,7 @@ export function defaultTemplates(projectId: string): NodeTemplate[] {
       projectId,
       name: 'Research',
       order: 2,
-      style: { color: 'green', strokeWidth: 'medium', dashed: true },
+      style: { color: 'green', strokeWidth: 'medium', dashed: true, shape: 'card' },
       fields: [
         { id: nanoid(), label: 'Question', type: 'richtext' },
         { id: nanoid(), label: 'Sources', type: 'richtext' },

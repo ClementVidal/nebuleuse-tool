@@ -36,6 +36,17 @@ db.version(2).stores({}).upgrade(async (tx) => {
     })
 })
 
+// v3: templates get a shape (card / sticky). "Note" templates become post-its.
+db.version(3).stores({}).upgrade(async (tx) => {
+  await tx
+    .table('templates')
+    .toCollection()
+    .modify((template: { name?: string; style?: Record<string, unknown> }) => {
+      if (!template.style || 'shape' in template.style) return
+      template.style.shape = template.name?.trim().toLowerCase() === 'note' ? 'sticky' : 'card'
+    })
+})
+
 // ---------------------------------------------------------------- connection status
 
 /**

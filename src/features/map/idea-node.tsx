@@ -7,7 +7,7 @@ import type { IdeaNode as IdeaNodeModel } from '@/db/types'
 import { cn } from '@/lib/utils'
 import { useMapActions } from './map-context'
 import { markdownToHtml } from './markdown'
-import { nodeBoxStyle, nodeTitleColor, templateStyle } from './node-style'
+import { nodeBoxClass, nodeBoxStyle, nodeTitleColor, templateStyle } from './node-style'
 
 export type IdeaFlowNode = Node<{ model: IdeaNodeModel }, 'idea'>
 
@@ -50,6 +50,7 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
       <div
         className={cn(
           'relative flex h-full flex-col gap-1.5 overflow-hidden rounded-lg px-3.5 py-3 shadow-sm transition-shadow',
+          nodeBoxClass(style),
           selected && 'ring-2 ring-[var(--sketch-blue)] ring-offset-2 ring-offset-[var(--canvas)]',
         )}
         style={box}

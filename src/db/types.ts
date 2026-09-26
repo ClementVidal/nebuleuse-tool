@@ -9,11 +9,15 @@ export interface TemplateField {
 }
 
 /** Style shared by every node of a template (only editable in the template editor). */
+/** Card: bordered box. Sticky: post-it look (brighter fill, no border, shadow, folded corner). */
+export type NodeShape = 'card' | 'sticky'
+
 export interface NodeStyle {
   /** Drives the text, the border and a dimmed background. */
   color: PaletteColor
   strokeWidth: StrokeWidth
   dashed: boolean
+  shape: NodeShape
 }
 
 export interface NodeTemplate {

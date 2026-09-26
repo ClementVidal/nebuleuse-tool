@@ -33,6 +33,8 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
       et un fond atténué ;
     - épaisseur de bordure (fine / moyenne / épaisse) ;
     - contour plein ou pointillé ;
+    - **forme** : carte (bordure, fond atténué) ou post-it (fond plus soutenu, sans bordure,
+      ombre, coin plié) — le template « Note » est un post-it par défaut ;
   - une liste ordonnée de **champs** : `{ id, label, type }` avec
     `type ∈ { richtext, date, number }`.
 - Un template utilisé par au moins un nœud ne peut pas être supprimé (v1).

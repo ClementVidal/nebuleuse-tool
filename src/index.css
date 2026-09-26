@@ -137,6 +137,19 @@
   opacity: 1;
 }
 
+/* Post-it nodes: folded bottom-right corner. */
+.node-sticky::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(315deg, var(--canvas) 50%, color-mix(in srgb, currentColor 18%, transparent) 50%);
+  box-shadow: -1px -1px 2px rgb(0 0 0 / 0.08);
+  pointer-events: none;
+}
+
 /* Edge halo: hover feedback, and selection state. */
 .link-halo { stroke: var(--sketch-blue); stroke-opacity: 0; transition: stroke-opacity 120ms; }
 .react-flow__edge:hover .link-halo { stroke-opacity: 0.12; }
