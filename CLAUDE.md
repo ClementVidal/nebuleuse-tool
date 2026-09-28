@@ -2,6 +2,9 @@
 
 Guide for working in this repository. Product spec: `SPEC.md` (French). UI copy is in French.
 
+## Workflow
+- After every change: build, lint, test, then commit and push to `main` without being asked (Vercel deploys `main`).
+
 ## Commands
 - `npm run dev` — dev server
 - `npm run build` — `tsc -b` + Vite build (use it as the type-check)

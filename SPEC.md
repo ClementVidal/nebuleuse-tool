@@ -18,7 +18,8 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 
 ### Nœud
 - Instance d'un **template** du projet.
-- Possède toujours un **titre**, plus les **valeurs des champs** définis par son template.
+- Possède toujours un **titre** et un **statut** (`Brouillon` par défaut, ou `Prêt`), plus les
+  **valeurs des champs** définis par son template.
 - Style **entièrement défini par son template** (tous les nœuds d'un template le partagent,
   pas de surcharge par nœud).
 - Position et dimensions libres (redimensionnable).
@@ -77,15 +78,17 @@ Mémorisé dans le navigateur ; raccourci `L`. Double-clic et double-tap sont é
 - Page dédiée (plein écran sur mobile) : police de lecture (Literata), ~65 caractères par ligne,
   interligne généreux, taille de texte réglable (mémorisée).
 - Temps de lecture et nombre de mots, barre de progression, sommaire des titres (écran large),
-  champs date / nombre en métadonnées, favori.
+  statut et champs date / nombre en métadonnées, favori.
 - Un double-clic ou double-tap n'importe où ferme le lecteur (ainsi que `Échap` ou la croix).
 
 ### Éditeur
-- La même page, avec le titre éditable en grand et le texte dans un éditeur riche :
+- La même page, avec le titre éditable en grand ; juste dessous, en petit : le **statut**
+  (menu Brouillon / Prêt) et les champs date / nombre du template.
+- Le texte dans un éditeur riche :
   barre d'outils toujours visible (titres, gras, italique, barré, code, lien, listes, tâches,
   citation, bloc de code, séparateur, annuler/rétablir) et menu de mise en forme sur la sélection.
 - Raccourcis Markdown pendant la frappe (`## `, `- `, `[ ] `, `> `, `**gras**`…).
-- Enregistrement automatique ; `Entrée` dans le titre passe au texte.
+- Enregistrement automatique (sans indicateur) ; `Entrée` dans le titre passe au texte.
 
 ## Navigation
 

@@ -1,12 +1,17 @@
-import { AArrowDown, AArrowUp, Bookmark, BookmarkCheck, BookOpen, PenLine, X } from 'lucide-react'
+import { AArrowDown, AArrowUp, Bookmark, BookmarkCheck, BookOpen, Check, ChevronDown, PenLine, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { RichTextEditor } from '@/components/rich-text-editor'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { setBookmarked, updateNode, updateNodeValue } from '@/db/actions'
 import { colorCss } from '@/db/palette'
-import type { IdeaNode, NodeTemplate, TemplateField } from '@/db/types'
+import type { IdeaNode, IdeaStatus, NodeTemplate, TemplateField } from '@/db/types'
 import { cn } from '@/lib/utils'
 import { markdownExcerpt, markdownToHtml } from './markdown'
 import { templateStyle } from './node-style'
@@ -226,15 +231,15 @@ function DocumentBody({ node, mode, template, location, onClose }: IdeaDocumentP
             </DialogDescription>
 
             {/* Meta line */}
-            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
-              {reading && words > 0 && (
-                <span>
-                  {minutes} min de lecture · {words} mot{words > 1 ? 's' : ''}
-                </span>
-              )}
-              {!reading && <span>Enregistré automatiquement</span>}
-              {reading &&
-                metaFields.map((f) => {
+            {reading ? (
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
+                <StatusDot status={node.status} withLabel />
+                {words > 0 && (
+                  <span>
+                    {minutes} min de lecture · {words} mot{words > 1 ? 's' : ''}
+                  </span>
+                )}
+                {metaFields.map((f) => {
                   const v = node.values[f.id]
                   if (v === null || v === undefined || v === '') return null
                   return (
@@ -243,9 +248,10 @@ function DocumentBody({ node, mode, template, location, onClose }: IdeaDocumentP
                     </span>
                   )
                 })}
-            </div>
-            {!reading && metaFields.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-4">
+              </div>
+            ) : (
+              <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                <StatusPicker node={node} />
                 {metaFields.map((f) => (
                   <MetaFieldInput key={f.id} node={node} field={f} />
                 ))}
@@ -325,16 +331,64 @@ function TitleInput({ node }: { node: IdeaNode }) {
   )
 }
 
+const STATUS_LABELS: Record<IdeaStatus, string> = { draft: 'Brouillon', ready: 'Prêt' }
+
+function StatusDot({ status = 'draft', withLabel }: { status?: IdeaStatus; withLabel?: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span
+        className={cn('size-2 rounded-full', status !== 'ready' && 'border border-muted-foreground/60')}
+        style={status === 'ready' ? { background: 'var(--sketch-green)' } : undefined}
+      />
+      {withLabel && STATUS_LABELS[status]}
+    </span>
+  )
+}
+
+/** "Statut : Brouillon ▾" — a small dropdown right below the title. */
+function StatusPicker({ node }: { node: IdeaNode }) {
+  const status = node.status ?? 'draft'
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span>Statut</span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2.5 text-xs font-medium" aria-label={`Statut : ${STATUS_LABELS[status]}`}>
+            <StatusDot status={status} />
+            {STATUS_LABELS[status]}
+            <ChevronDown className="size-3.5 opacity-60" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-36">
+          {(Object.keys(STATUS_LABELS) as IdeaStatus[]).map((s) => (
+            <DropdownMenuItem key={s} role="menuitemradio" aria-checked={s === status} onSelect={() => void updateNode(node.id, { status: s })}>
+              <StatusDot status={s} />
+              {STATUS_LABELS[s]}
+              {s === status && <Check className="ml-auto" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </span>
+  )
+}
+
+/** Date / number field, as a small inline pill next to the status. */
 function MetaFieldInput({ node, field }: { node: IdeaNode; field: TemplateField }) {
   const value = node.values[field.id]
   const id = `meta-${field.id}`
   return (
-    <label htmlFor={id} className="grid gap-1 text-sm">
-      <span className="text-muted-foreground">{field.label}</span>
-      <Input
+    <label htmlFor={id} className="inline-flex items-center gap-1.5">
+      <span>{field.label}</span>
+      <input
         id={id}
         type={field.type === 'date' ? 'date' : 'number'}
-        className="w-44"
+        inputMode={field.type === 'number' ? 'decimal' : undefined}
+        placeholder="—"
+        className={cn(
+          'doc-meta-input h-7 rounded-full border bg-transparent px-2.5 text-xs font-medium text-foreground outline-none transition-colors hover:bg-accent focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 dark:bg-input/30',
+          field.type === 'number' ? 'w-14 text-center' : 'w-36',
+        )}
         defaultValue={value === null || value === undefined ? '' : String(value)}
         onChange={(e) =>
           updateNodeValue(

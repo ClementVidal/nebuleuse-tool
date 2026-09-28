@@ -63,7 +63,11 @@ export interface IdeaNode {
   childMapId: string | null
   /** Set when the node is bookmarked (timestamp, used to order bookmarks). */
   bookmarkedAt?: number
+  /** Writing status; absent means draft. */
+  status?: IdeaStatus
 }
+
+export type IdeaStatus = 'draft' | 'ready'
 
 export type ArrowMode = 'none' | 'start' | 'end' | 'both'
 export type EdgePathKind = 'straight' | 'curved'

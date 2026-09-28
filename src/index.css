@@ -295,6 +295,12 @@
 .doc-prose li:has(input[type="checkbox"]) input { margin-right: 0.55em; }
 
 /* Editor */
+.doc-meta-input::-webkit-inner-spin-button,
+.doc-meta-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.doc-meta-input[type="number"] { -moz-appearance: textfield; }
+.doc-meta-input::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
+.dark .doc-meta-input { color-scheme: dark; }
+
 .rich-text-toolbar {
   position: sticky;
   top: 0;
