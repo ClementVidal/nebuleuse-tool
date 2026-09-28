@@ -4,65 +4,75 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* shadcn/ui — neutral base color */
+/* Theme: an editorial, writing-first tone (Medium-like). Warm greys, soft contrast, one ink.
+   Dark mode is a soft charcoal with cream text rather than black and white, for long reads. */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --background: #ffffff;
+  --foreground: #242424;
+  --card: #ffffff;
+  --card-foreground: #242424;
+  --popover: #ffffff;
+  --popover-foreground: #242424;
+  --primary: #242424;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f3;
+  --secondary-foreground: #242424;
+  --muted: #f5f5f3;
+  --muted-foreground: #6b6b6b;
+  --accent: #f2f2f0;
+  --accent-foreground: #242424;
+  --destructive: #c9372c;
+  --border: #ebebe8;
+  --input: #e0e0dc;
+  --ring: #a8a8a3;
 
   /* Canvas palette shared by nodes and edges (see src/db/palette.ts) */
-  --sketch-ink: #1e1e1e;
-  --sketch-red: #e03131;
-  --sketch-green: #2f9e44;
-  --sketch-blue: #1971c2;
-  --sketch-orange: #f08c00;
-  --sketch-violet: #9c36b5;
-  --canvas: #fdfdfb;
+  --sketch-ink: #242424;
+  --sketch-red: #d9362b;
+  --sketch-green: #2b8a3e;
+  --sketch-blue: #1c6fbf;
+  --sketch-orange: #e8890c;
+  --sketch-violet: #9036b0;
+  --canvas: #fbfbf9;
+  /* How strongly a template colour tints its nodes (cards, post-its). */
+  --tint-card: 12%;
+  --tint-sticky: 30%;
+  --node-shadow: 0 1px 1px rgb(0 0 0 / 0.06), 0 8px 18px -6px rgb(0 0 0 / 0.22);
+
+  --reading-font: "Literata Variable", "Literata", Charter, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --background: #1a1a19;
+  --foreground: #e9e7e3;
+  --card: #222221;
+  --card-foreground: #e9e7e3;
+  --popover: #252524;
+  --popover-foreground: #e9e7e3;
+  --primary: #e9e7e3;
+  --primary-foreground: #1a1a19;
+  --secondary: #2a2a28;
+  --secondary-foreground: #e9e7e3;
+  --muted: #2a2a28;
+  --muted-foreground: #a3a09a;
+  --accent: #2e2e2c;
+  --accent-foreground: #e9e7e3;
+  --destructive: #ef7d72;
+  --border: rgb(255 250 240 / 0.09);
+  --input: rgb(255 250 240 / 0.14);
+  --ring: #77746e;
 
-  --sketch-ink: #e3e3e8;
-  --sketch-red: #ff8383;
-  --sketch-green: #3a994c;
-  --sketch-blue: #56a2e8;
-  --sketch-orange: #f59f00;
-  --sketch-violet: #c77ddb;
-  --canvas: #121212;
+  --sketch-ink: #d9d6d0;
+  --sketch-red: #ee8278;
+  --sketch-green: #74c486;
+  --sketch-blue: #74aef0;
+  --sketch-orange: #efaa55;
+  --sketch-violet: #c893e0;
+  --canvas: #171716;
+  --tint-card: 10%;
+  --tint-sticky: 21%;
+  --node-shadow: 0 1px 1px rgb(0 0 0 / 0.3), 0 10px 22px -8px rgb(0 0 0 / 0.6);
 }
 
 @theme inline {
@@ -90,6 +100,7 @@
   --color-ring: var(--ring);
   --color-canvas: var(--canvas);
   --color-sketch-ink: var(--sketch-ink);
+  --font-reading: var(--reading-font);
 }
 
 @layer base {
@@ -98,8 +109,13 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
   }
+
 }
+
+/* Pill-shaped buttons, as in editorial apps. Unlayered so it wins over the component's rounded-md. */
+[data-slot="button"] { border-radius: 9999px; }
 
 /* React Flow overrides: let our sketch rendering own the visuals. */
 .react-flow {
@@ -119,6 +135,14 @@
   --xy-attribution-background-color: transparent;
   --xy-edge-label-background-color: var(--canvas);
 }
+
+.react-flow__controls {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+.react-flow__controls-button { border-bottom-color: var(--border); }
 
 .react-flow__node-idea {
   padding: 0;
@@ -158,14 +182,15 @@
 
 /* Rich text rendered inside nodes: tuned for comfortable reading of long texts. */
 .node-prose {
+  font-family: var(--reading-font);
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.65;
   overflow-wrap: anywhere;
   user-select: text;
 }
 .node-prose > * + *,
 .node-prose div > * + * { margin-top: 0.6em; }
-.node-prose h1, .node-prose h2, .node-prose h3 { font-weight: 600; line-height: 1.3; }
+.node-prose h1, .node-prose h2, .node-prose h3 { font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif); font-weight: 600; line-height: 1.3; }
 .node-prose h1 { font-size: 1.2em; }
 .node-prose h2 { font-size: 1.1em; }
 .node-prose h3 { font-size: 1em; }
@@ -187,9 +212,6 @@
 /* ------------------------------------------------------------------ idea reader / editor */
 /* One typography for reading and editing, tuned for long texts on phone and desktop:
    a text face designed for screens, ~65 characters per line, generous rhythm. */
-.idea-document {
-  --doc-font: "Literata Variable", "Literata", Charter, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-}
 .doc-title {
   font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.2rem);
   font-weight: 650;
@@ -206,7 +228,7 @@
   color: var(--muted-foreground);
 }
 .doc-prose {
-  font-family: var(--doc-font);
+  font-family: var(--reading-font);
   font-size: var(--doc-size, 18px);
   line-height: 1.75;
   color: color-mix(in srgb, var(--foreground) 88%, var(--background));

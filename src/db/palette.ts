@@ -27,7 +27,7 @@ export function colorCss(color: PaletteColor): string {
   return PALETTE[color]?.css ?? PALETTE.ink.css
 }
 
-/** A faint tint of a palette colour over the canvas, for node backgrounds. */
+/** A faint tint of a palette colour over the canvas, for node backgrounds (strength set per theme). */
 export function dimmedColorCss(color: PaletteColor): string {
-  return `color-mix(in srgb, ${colorCss(color)} 14%, var(--canvas))`
+  return `color-mix(in oklab, ${colorCss(color)} var(--tint-card), var(--canvas))`
 }

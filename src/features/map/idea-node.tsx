@@ -83,7 +83,7 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
       </div>
 
       {/* Depth navigation: up to the parent map, down into this idea's own map. */}
-      <div className="nodrag nopan absolute top-0 left-full ml-1.5 flex flex-col overflow-hidden rounded-md border bg-background shadow-xs">
+      <div className="nodrag nopan absolute top-0 left-full ml-1.5 flex flex-col overflow-hidden rounded-full border bg-background shadow-xs">
         <button
           type="button"
           disabled={!navigateUp}
@@ -116,7 +116,7 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
 
       <NodeToolbar isVisible={menuNodeId === model.id} position={Position.Top} offset={10}>
         <div
-          className="nodrag nopan nowheel flex items-center gap-0.5 rounded-lg border bg-popover p-1 text-popover-foreground shadow-md"
+          className="nodrag nopan nowheel flex items-center gap-0.5 rounded-full border bg-popover p-1 text-popover-foreground shadow-md"
           // Menu clicks must not reach the node (whose click handler reopens the menu).
           onClick={(e) => e.stopPropagation()}
         >

@@ -13,7 +13,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
@@ -44,59 +43,63 @@ export function ProjectsPage() {
 
   return (
     <div className="min-h-dvh">
-      <header className="flex h-14 items-center justify-between border-b px-4">
-        <span className="text-lg font-semibold tracking-tight">Nébuleuse</span>
+      <header className="flex h-14 items-center justify-between border-b px-4 sm:px-6">
+        <span className="font-reading text-2xl font-semibold tracking-tight">Nébuleuse</span>
         <ThemeToggle />
       </header>
 
-      <main className="mx-auto grid max-w-4xl gap-6 px-4 py-8">
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-semibold">Projets</h1>
-          <Button onClick={() => setNameDialog({ mode: 'create' })}>
-            <Plus /> Nouveau projet
+      <main className="mx-auto max-w-3xl px-5 pt-10 pb-16 sm:px-8 sm:pt-16">
+        <div className="flex items-end justify-between gap-4 border-b pb-6">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Projets</h1>
+            <p className="mt-2 font-reading text-muted-foreground">Tes réflexions, idée par idée.</p>
+          </div>
+          <Button onClick={() => setNameDialog({ mode: 'create' })} className="shrink-0" aria-label="Nouveau projet">
+            <Plus /> <span className="max-sm:hidden">Nouveau projet</span>
+            <span className="sm:hidden">Nouveau</span>
           </Button>
         </div>
 
         {projects?.length === 0 && (
-          <Card className="items-center border-dashed py-12 text-center">
-            <CardHeader className="w-full">
-              <CardTitle>Aucun projet</CardTitle>
-              <CardDescription>Crée un projet pour commencer à cartographier tes idées.</CardDescription>
-            </CardHeader>
-          </Card>
+          <div className="py-16 text-center">
+            <p className="font-reading text-xl">Aucun projet pour l’instant.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Crée un projet pour commencer à cartographier tes idées.</p>
+          </div>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <ul>
           {projects?.map((project) => (
-            <Card key={project.id} className="relative transition-colors hover:bg-accent/50">
-              <CardHeader>
-                <CardTitle>
-                  <Link to="/projects/$projectId" params={{ projectId: project.id }} className="after:absolute after:inset-0">
-                    {project.name}
-                  </Link>
-                </CardTitle>
-                <CardDescription>Modifié le {new Date(project.updatedAt).toLocaleString('fr-FR')}</CardDescription>
-                <CardAction className="relative z-10">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" aria-label="Actions du projet">
-                        <MoreHorizontal />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => setNameDialog({ mode: 'rename', project })}>
-                        <Pencil /> Renommer
-                      </DropdownMenuItem>
-                      <DropdownMenuItem variant="destructive" onSelect={() => setToDelete(project)}>
-                        <Trash2 /> Supprimer
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </CardAction>
-              </CardHeader>
-            </Card>
+            <li key={project.id} className="group relative flex items-center gap-3 border-b py-6">
+              <div className="min-w-0 flex-1">
+                <Link
+                  to="/projects/$projectId"
+                  params={{ projectId: project.id }}
+                  className="block truncate text-xl font-bold tracking-tight after:absolute after:inset-0 group-hover:underline group-hover:decoration-1 group-hover:underline-offset-4 sm:text-2xl"
+                >
+                  {project.name}
+                </Link>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  Modifié le {new Date(project.updatedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="Actions du projet" className="relative z-10 text-muted-foreground">
+                    <MoreHorizontal />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setNameDialog({ mode: 'rename', project })}>
+                    <Pencil /> Renommer
+                  </DropdownMenuItem>
+                  <DropdownMenuItem variant="destructive" onSelect={() => setToDelete(project)}>
+                    <Trash2 /> Supprimer
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </li>
           ))}
-        </div>
+        </ul>
       </main>
 
       <NameDialog state={nameDialog} onCancel={() => setNameDialog(undefined)} onSubmit={submitName} />

@@ -13,15 +13,15 @@ export function templateStyle(template: NodeTemplate | undefined): NodeStyle {
  */
 export function nodeBoxStyle(style: NodeStyle): CSSProperties {
   const color = colorCss(style.color)
-  const text = `color-mix(in srgb, ${color} 30%, var(--foreground))`
+  const text = `color-mix(in oklab, ${color} 30%, var(--foreground))`
   if (style.shape === 'sticky') {
     // Post-it: a stronger fill, no border (unless dashed), a paper-like shadow.
     return {
       color: text,
-      background: `color-mix(in srgb, ${color} 30%, var(--canvas))`,
+      background: `color-mix(in oklab, ${color} var(--tint-sticky), var(--canvas))`,
       border: style.dashed ? `${STROKE_WIDTHS[style.strokeWidth].px}px dashed ${color}` : 'none',
       borderRadius: 3,
-      boxShadow: '0 1px 1px rgb(0 0 0 / 0.08), 0 8px 18px -6px rgb(0 0 0 / 0.28)',
+      boxShadow: 'var(--node-shadow)',
     }
   }
   return {
@@ -38,5 +38,5 @@ export function nodeBoxClass(style: NodeStyle): string | undefined {
 
 /** Title colour: the template hue, darkened (or lightened in dark mode) enough to read well. */
 export function nodeTitleColor(style: NodeStyle) {
-  return `color-mix(in srgb, ${colorCss(style.color)} 55%, var(--foreground))`
+  return `color-mix(in oklab, ${colorCss(style.color)} 55%, var(--foreground))`
 }

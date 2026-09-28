@@ -20,7 +20,7 @@ export function CanvasToolbar({ projectId }: { projectId: string }) {
   return (
     // Above the minimap on large screens (minimap: 150px high + 15px margin).
     <Panel position="bottom-right" className="max-md:!mb-8 md:!mb-[176px]">
-      <div className="flex items-center gap-0.5 rounded-lg border bg-background p-1 shadow-sm">
+      <div className="flex items-center gap-0.5 rounded-full border bg-background p-1 shadow-sm">
         <Button
           variant={locked ? 'ghost' : 'secondary'}
           size="icon"
