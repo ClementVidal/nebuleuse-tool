@@ -17,6 +17,16 @@ import {
   type Viewport,
 } from '@xyflow/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { createEdge, createNode, deleteEdges, deleteNodes, saveViewport, setBookmarked, updateNodePositions } from '@/db/actions'
 import { DEFAULT_NODE_SIZE } from '@/db/defaults'
 import { colorCss, dimmedColorCss } from '@/db/palette'
@@ -30,7 +40,8 @@ import { CanvasToolbar } from './canvas-toolbar'
 import { setCanvasLocked, useCanvasLocked } from './lock-store'
 import { onMapCommand } from './map-commands'
 import { MapContext, type MapActions } from './map-context'
-import { NodeEditorSheet } from './node-editor-sheet'
+import { IdeaDocument, type DocumentMode } from './idea-document'
+import { NodeSettingsSheet } from './node-settings-sheet'
 import { templateStyle } from './node-style'
 import { LinkEdgeComponent, type LinkFlowEdge } from './link-edge'
 import { findNeighbor, placeBeside, type Direction } from './spatial-nav'
@@ -65,6 +76,8 @@ interface MapCanvasProps {
    * going back to this map then restores the last view instead of re-centering.
    */
   onFocusConsumed: () => void
+  /** Label of this map (owner idea title, or project name), shown in the reader. */
+  mapLabel: string
 }
 
 export function MapCanvas({
@@ -76,6 +89,7 @@ export function MapCanvas({
   onNavigateUp,
   onSelectTemplateIndex,
   onFocusConsumed,
+  mapLabel,
 }: MapCanvasProps) {
   const rf = useReactFlow<IdeaFlowNode, LinkFlowEdge>()
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -85,7 +99,10 @@ export function MapCanvas({
   const locked = useCanvasLocked()
   const [nodes, setNodes] = useState<IdeaFlowNode[]>([])
   const [edges, setEdges] = useState<LinkFlowEdge[]>([])
-  const [editingNodeId, setEditingNodeId] = useState<string>()
+  /** Idea open in the full-page reader / editor. */
+  const [doc, setDoc] = useState<{ id: string; mode: DocumentMode }>()
+  const [settingsNodeId, setSettingsNodeId] = useState<string>()
+  const [deleteRequestId, setDeleteRequestId] = useState<string>()
   /** Node whose click menu is open. */
   const [menuNodeId, setMenuNodeId] = useState<string>()
   /** Node to select once it shows up from the database (after creation / on open). */
@@ -174,7 +191,7 @@ export function MapCanvas({
         return created
       })
       pendingSelection.current = node.id
-      setEditingNodeId(node.id)
+      setDoc({ id: node.id, mode: 'edit' })
     },
     [activeTemplateId, map.projectId, map.id],
   )
@@ -208,12 +225,12 @@ export function MapCanvas({
     () =>
       onMapCommand((command) => {
         if (command.type === 'navigate-up') onNavigateUp?.()
-        if (command.type === 'create-node') {
+        if (command.type === 'create-node' && !locked) {
           const c = viewportCenterScreen()
           addNodeAtScreen(c.x, c.y, command.templateId)
         }
       }),
-    [onNavigateUp, viewportCenterScreen, addNodeAtScreen],
+    [onNavigateUp, viewportCenterScreen, addNodeAtScreen, locked],
   )
 
   // --- Selection helpers
@@ -296,14 +313,24 @@ export function MapCanvas({
     [selectOnly],
   )
 
-  /** Double-click / double-tap on a node: edit it when locked, enter its map when unlocked. */
-  const activateNode = useCallback(
+  /** Double-click / double-tap on a node: the reader when locked, the editor when unlocked. */
+  const openDocument = useCallback(
     (nodeId: string) => {
       setMenuNodeId(undefined)
-      if (locked) setEditingNodeId(nodeId)
-      else onOpenNode(nodeId)
+      setDoc({ id: nodeId, mode: locked ? 'read' : 'edit' })
     },
-    [locked, onOpenNode],
+    [locked],
+  )
+
+  const requestDelete = useCallback(
+    (nodeId: string) => {
+      const node = dbNodes?.find((n) => n.id === nodeId)
+      const size = node?.childMapId ? (childMapSizes?.get(node.childMapId) ?? 0) : 0
+      // Deleting an idea whose map has content deserves a confirmation; otherwise undo is enough.
+      if (size > 0) setDeleteRequestId(nodeId)
+      else void deleteNodes([nodeId])
+    },
+    [dbNodes, childMapSizes],
   )
 
   /** Select a node and animate the view onto it. */
@@ -330,7 +357,7 @@ export function MapCanvas({
   // --- Keyboard navigation
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || editingNodeId || isTypingTarget(event.target)) return
+      if (event.defaultPrevented || doc || settingsNodeId || isTypingTarget(event.target)) return
       if (document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]')) return
       const selectedNodes = nodes.filter((n) => n.selected)
       const selected = selectedNodes.length === 1 ? selectedNodes[0] : undefined
@@ -373,9 +400,10 @@ export function MapCanvas({
           break
         case 'e':
         case 'F2':
+        case ' ':
           if (selected) {
             event.preventDefault()
-            setEditingNodeId(selected.id)
+            openDocument(selected.id)
           }
           break
         case 'f':
@@ -395,13 +423,14 @@ export function MapCanvas({
           }
           break
         case 'n': {
+          if (locked) break
           event.preventDefault()
           const c = viewportCenterScreen()
           addNodeAtScreen(c.x, c.y)
           break
         }
         case 'Tab':
-          if (selected) {
+          if (selected && !locked) {
             event.preventDefault()
             const rect = { x: selected.position.x, y: selected.position.y, width: selected.width ?? 0, height: selected.height ?? 0 }
             void addNode(placeBeside(rect, nodeRects(), DEFAULT_NODE_SIZE), selected.id)
@@ -416,7 +445,7 @@ export function MapCanvas({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [nodes, editingNodeId, rf, selectOnly, nodeRects, viewportCenterScreen, addNode, addNodeAtScreen, onOpenNode, onNavigateUp, onSelectTemplateIndex, locked, menuNodeId, focusNode])
+  }, [nodes, doc, settingsNodeId, rf, selectOnly, nodeRects, viewportCenterScreen, addNode, addNodeAtScreen, onOpenNode, onNavigateUp, onSelectTemplateIndex, locked, menuNodeId, focusNode, openDocument])
 
   // --- Derived UI state
   const templatesById = useMemo(() => new Map(templates.map((t) => [t.id, t])), [templates])
@@ -424,19 +453,23 @@ export function MapCanvas({
     () => ({
       templates: templatesById,
       openNode: onOpenNode,
-      editNode: setEditingNodeId,
+      openSettings: setSettingsNodeId,
+      requestDelete,
       navigateUp: onNavigateUp,
       childMapSizes: childMapSizes ?? new Map(),
       menuNodeId,
       locked,
-      focusNode,
       closeMenu: () => setMenuNodeId(undefined),
     }),
-    [templatesById, onOpenNode, onNavigateUp, childMapSizes, menuNodeId, locked, focusNode],
+    [templatesById, onOpenNode, requestDelete, onNavigateUp, childMapSizes, menuNodeId, locked],
   )
   const selectedEdges = edges.filter((e) => e.selected)
-  const selectedEdge = selectedEdges.length === 1 && !nodes.some((n) => n.selected) ? selectedEdges[0].data?.model : undefined
-  const editingNode: IdeaNode | undefined = dbNodes?.find((n) => n.id === editingNodeId)
+  const selectedEdge =
+    !locked && selectedEdges.length === 1 && !nodes.some((n) => n.selected) ? selectedEdges[0].data?.model : undefined
+  const docNode: IdeaNode | undefined = dbNodes?.find((n) => n.id === doc?.id)
+  const settingsNode: IdeaNode | undefined = dbNodes?.find((n) => n.id === settingsNodeId)
+  const deleteNode: IdeaNode | undefined = dbNodes?.find((n) => n.id === deleteRequestId)
+  const sizeOf = (node: IdeaNode | undefined) => (node?.childMapId ? (childMapSizes?.get(node.childMapId) ?? 0) : 0)
 
   // Ignore a corrupt saved view (e.g. NaN) rather than rendering an unusable canvas.
   const savedViewport =
@@ -454,13 +487,13 @@ export function MapCanvas({
         onDoubleClick={(e) => {
           // Touch double-taps are handled in onPointerUp: mobile browsers don't reliably emit dblclick.
           if (lastPointerType.current === 'touch') return
-          if ((e.target as HTMLElement).classList.contains('react-flow__pane')) addNodeAtScreen(e.clientX, e.clientY)
+          if (!locked && (e.target as HTMLElement).classList.contains('react-flow__pane')) addNodeAtScreen(e.clientX, e.clientY)
         }}
         onPointerDown={(e) => {
           lastPointerType.current = e.pointerType
         }}
         onPointerUp={(e) => {
-          if (e.pointerType !== 'touch' || !(e.target as HTMLElement).classList.contains('react-flow__pane')) return
+          if (locked || e.pointerType !== 'touch' || !(e.target as HTMLElement).classList.contains('react-flow__pane')) return
           const last = lastTap.current
           const now = e.timeStamp
           if (last && now - last.time < 350 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 30) {
@@ -489,10 +522,10 @@ export function MapCanvas({
             if (event) setMenuNodeId(undefined)
           }}
           onNodeDoubleClick={(_, node) => {
-            if (lastPointerType.current !== 'touch') activateNode(node.id)
+            if (lastPointerType.current !== 'touch') openDocument(node.id)
           }}
           onNodeClick={(event, node) => {
-            // A plain click opens the node menu (focus / enter / edit) and brings the node into view.
+            // A plain click opens the node menu and brings the node into view.
             if (!event.shiftKey && !event.metaKey && !event.ctrlKey) {
               setMenuNodeId(node.id)
               revealNode(node.id)
@@ -502,7 +535,7 @@ export function MapCanvas({
             const last = lastNodeTap.current
             if (last?.id === node.id && event.timeStamp - last.time < 350) {
               lastNodeTap.current = undefined
-              activateNode(node.id)
+              openDocument(node.id)
             } else {
               lastNodeTap.current = { id: node.id, time: event.timeStamp }
             }
@@ -513,7 +546,12 @@ export function MapCanvas({
           fitViewOptions={{ maxZoom: 1, padding: 0.3 }}
           zoomOnDoubleClick={false}
           disableKeyboardA11y
-          deleteKeyCode={['Delete', 'Backspace']}
+          // Locked = read-only canvas: nothing can be moved, linked or deleted by accident.
+          className={locked ? 'canvas-locked' : undefined}
+          nodesDraggable={!locked}
+          nodesConnectable={!locked}
+          edgesReconnectable={false}
+          deleteKeyCode={locked ? null : ['Delete', 'Backspace']}
           minZoom={0.1}
           maxZoom={4}
         >
@@ -535,19 +573,53 @@ export function MapCanvas({
           )}
           {dbNodes.length === 0 && (
             <Panel position="top-center" className="pointer-events-none mt-24 px-4 text-center text-muted-foreground">
-              <span className="max-md:hidden">
-                Double-clique ou appuie sur <kbd className="rounded border px-1.5 font-sans text-sm">N</kbd> pour créer une idée
-              </span>
-              <span className="md:hidden">Touche deux fois le fond pour créer une idée</span>
+              {locked ? (
+                <span>Carte vide. Déverrouille le canvas (cadenas en bas à droite) pour ajouter des idées.</span>
+              ) : (
+                <>
+                  <span className="max-md:hidden">
+                    Double-clique ou appuie sur <kbd className="rounded border px-1.5 font-sans text-sm">N</kbd> pour créer une idée
+                  </span>
+                  <span className="md:hidden">Touche deux fois le fond pour créer une idée</span>
+                </>
+              )}
             </Panel>
           )}
         </ReactFlow>
       </div>
-      <NodeEditorSheet
-        node={editingNode}
-        templates={templates}
-        onClose={() => setEditingNodeId(undefined)}
+      <IdeaDocument
+        node={docNode}
+        mode={doc?.mode ?? 'read'}
+        template={docNode && templatesById.get(docNode.templateId)}
+        childSize={sizeOf(docNode)}
+        location={mapLabel}
+        onClose={() => setDoc(undefined)}
+        onDig={(id) => {
+          setDoc(undefined)
+          onOpenNode(id)
+        }}
       />
+      <NodeSettingsSheet node={settingsNode} templates={templates} onClose={() => setSettingsNodeId(undefined)} />
+      <AlertDialog open={deleteNode !== undefined} onOpenChange={(open) => !open && setDeleteRequestId(undefined)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer « {deleteNode?.title || 'Sans titre'} » ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sa carte contient {sizeOf(deleteNode)} idée{sizeOf(deleteNode) > 1 ? 's' : ''}, qui seront supprimées aussi. Tu
+              pourras annuler avec Ctrl+Z.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => deleteNode && void deleteNodes([deleteNode.id])}
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MapContext.Provider>
   )
 }

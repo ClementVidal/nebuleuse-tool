@@ -1,5 +1,5 @@
 import { Handle, NodeResizer, NodeToolbar, Position, type Node, type NodeProps } from '@xyflow/react'
-import { ArrowDown, ArrowUp, Bookmark, CornerDownRight, LocateFixed, Pencil } from 'lucide-react'
+import { ArrowDown, ArrowUp, Bookmark, CornerDownRight, Settings2, Trash2 } from 'lucide-react'
 import { memo, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { updateNode } from '@/db/actions'
@@ -16,7 +16,7 @@ type NodeContent = { id: string; html: string } | { id: string; meta: string }
 
 function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<IdeaFlowNode>) {
   const { model } = data
-  const { templates, openNode, editNode, navigateUp, childMapSizes, menuNodeId, locked, focusNode, closeMenu } = useMapActions()
+  const { templates, openNode, openSettings, requestDelete, navigateUp, childMapSizes, menuNodeId, locked, closeMenu } = useMapActions()
   const template = templates.get(model.templateId)
   const style = templateStyle(template)
   const box = nodeBoxStyle(style)
@@ -37,7 +37,7 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
   return (
     <div className="group relative" style={{ width, height }}>
       <NodeResizer
-        isVisible={selected}
+        isVisible={selected && !locked}
         minWidth={120}
         minHeight={60}
         color="var(--sketch-blue)"
@@ -120,11 +120,8 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
           // Menu clicks must not reach the node (whose click handler reopens the menu).
           onClick={(e) => e.stopPropagation()}
         >
-          <Button variant="ghost" size="sm" className="h-8" onClick={() => focusNode(model.id)}>
-            <LocateFixed /> Focus
-          </Button>
+          {/* The main action, emphasised: go down into the idea's own map. */}
           <Button
-            variant="ghost"
             size="sm"
             className="h-8"
             onClick={() => {
@@ -132,20 +129,33 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
               openNode(model.id)
             }}
           >
-            <CornerDownRight /> Entrer
+            <CornerDownRight /> Explorer l’idée
           </Button>
-          {locked && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8"
-              onClick={() => {
-                closeMenu()
-                editNode(model.id)
-              }}
-            >
-              <Pencil /> Éditer
-            </Button>
+          {!locked && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8"
+                onClick={() => {
+                  closeMenu()
+                  openSettings(model.id)
+                }}
+              >
+                <Settings2 /> Réglages
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-destructive hover:text-destructive"
+                onClick={() => {
+                  closeMenu()
+                  requestDelete(model.id)
+                }}
+              >
+                <Trash2 /> Supprimer
+              </Button>
+            </>
           )}
         </div>
       </NodeToolbar>

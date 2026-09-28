@@ -4,11 +4,11 @@ import {
   ArrowUp,
   Bookmark,
   FolderOpen,
-  Eye,
   House,
+  Lock,
+  LockOpen,
   Monitor,
   Moon,
-  Pencil,
   Plus,
   Redo2,
   Shapes,
@@ -136,6 +136,7 @@ function PaletteContent() {
         {project && (
           <CommandGroup heading="Actions">
             {mapId &&
+              !locked &&
               templates?.map((t) => (
                 <CommandItem
                   key={t.id}
@@ -167,11 +168,11 @@ function PaletteContent() {
             {mapId && (
               <CommandItem
                 value="lock"
-                keywords={['mode', 'navigation', 'édition', 'double-clic']}
+                keywords={['verrou', 'verrouiller', 'déverrouiller', 'lecture', 'édition', 'modifier']}
                 onSelect={() => run(() => setCanvasLocked(!locked))}
               >
-                {locked ? <Eye /> : <Pencil />}
-                {locked ? 'Mode navigation : double-clic pour entrer' : 'Mode édition : double-clic pour éditer'}
+                {locked ? <LockOpen /> : <Lock />}
+                {locked ? 'Déverrouiller : modifier la carte' : 'Verrouiller : lecture seule'}
                 <CommandShortcut>L</CommandShortcut>
               </CommandItem>
             )}

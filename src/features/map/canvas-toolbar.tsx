@@ -1,5 +1,5 @@
 import { Panel } from '@xyflow/react'
-import { Bookmark, BookmarkX, Eye, Pencil } from 'lucide-react'
+import { Bookmark, BookmarkX, Lock, LockOpen } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -10,26 +10,27 @@ import { cn } from '@/lib/utils'
 import { setCanvasLocked, useCanvasLocked } from './lock-store'
 import { useGoToNode } from './use-go-to-node'
 
-/** Floating tools over the canvas (bottom right): navigation / edit mode and bookmarks. */
+/** Floating tools over the canvas (bottom right): lock and bookmarks. */
 export function CanvasToolbar({ projectId }: { projectId: string }) {
-  const editMode = useCanvasLocked()
-  const modeLabel = editMode
-    ? 'Mode édition : double-clic sur une idée pour l’éditer (L pour passer en navigation)'
-    : 'Mode navigation : double-clic sur une idée pour y entrer (L pour passer en édition)'
+  const locked = useCanvasLocked()
+  const lockLabel = locked
+    ? 'Verrouillé (lecture) : double-clic pour lire une idée. Cliquer pour déverrouiller (L)'
+    : 'Déverrouillé (édition) : double-clic pour éditer une idée. Cliquer pour verrouiller (L)'
 
   return (
     // Above the minimap on large screens (minimap: 150px high + 15px margin).
     <Panel position="bottom-right" className="max-md:!mb-8 md:!mb-[176px]">
       <div className="flex items-center gap-0.5 rounded-lg border bg-background p-1 shadow-sm">
         <Button
-          variant="ghost"
+          variant={locked ? 'ghost' : 'secondary'}
           size="icon"
           className="size-8"
-          title={modeLabel}
-          aria-label={modeLabel}
-          onClick={() => setCanvasLocked(!editMode)}
+          title={lockLabel}
+          aria-label={lockLabel}
+          aria-pressed={!locked}
+          onClick={() => setCanvasLocked(!locked)}
         >
-          {editMode ? <Pencil /> : <Eye />}
+          {locked ? <Lock /> : <LockOpen />}
         </Button>
         <Separator orientation="vertical" className="!h-5" />
         <BookmarksButton projectId={projectId} />

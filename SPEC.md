@@ -54,20 +54,40 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 - Interface autour du canvas : composants shadcn/ui standard, thème clair / sombre.
 - Langue de l'interface : français.
 
+## Lecture et édition
+
+La lecture est au cœur de l'app : une idée peut contenir un texte long, qui doit se lire
+confortablement sur téléphone comme sur ordinateur.
+
+### Verrou (cadenas, barre flottante en bas à droite du canvas)
+Mémorisé dans le navigateur ; raccourci `L`. Double-clic et double-tap sont équivalents partout.
+
+| | Verrouillé (par défaut) — lecture | Déverrouillé — édition |
+|---|---|---|
+| Clic sur une idée | menu : **Explorer l'idée** | menu : **Explorer l'idée** (mis en avant), **Réglages**, **Supprimer** |
+| Double-clic sur une idée | ouvre le **lecteur** | ouvre l'**éditeur** |
+| Canvas | lecture seule : rien ne peut être déplacé, relié, créé ni supprimé | tout est modifiable |
+
+- **Explorer l'idée** : entre dans la carte enfant de l'idée.
+- **Réglages** : panneau sans titre ni texte — template de l'idée, apparence du template
+  (couleur, forme, bordure, contour ; partagée par toutes les idées du template), favori.
+- **Supprimer** : supprime l'idée ; confirmation si sa carte contient des idées (annulable avec `Ctrl+Z`).
+
+### Lecteur
+- Page dédiée (plein écran sur mobile) : police de lecture (Literata), ~65 caractères par ligne,
+  interligne généreux, taille de texte réglable (mémorisée).
+- Temps de lecture et nombre de mots, barre de progression, sommaire des titres (écran large),
+  champs date / nombre en métadonnées, « Explorer l'idée » en fin de page, favori.
+- Un double-clic ou double-tap n'importe où ferme le lecteur (ainsi que `Échap` ou la croix).
+
+### Éditeur
+- La même page, avec le titre éditable en grand et le texte dans un éditeur riche :
+  barre d'outils toujours visible (titres, gras, italique, barré, code, lien, listes, tâches,
+  citation, bloc de code, séparateur, annuler/rétablir) et menu de mise en forme sur la sélection.
+- Raccourcis Markdown pendant la frappe (`## `, `- `, `[ ] `, `> `, `**gras**`…).
+- Enregistrement automatique ; `Entrée` dans le titre passe au texte.
+
 ## Navigation
-
-### Menu d'une idée (simple clic)
-- Un clic sur une idée ouvre un petit menu au-dessus d'elle :
-  - **Focus** : sélectionne l'idée et centre la vue dessus (zoom de lecture si on est dézoomé) ;
-  - **Entrer** : ouvre la carte de l'idée ;
-  - **Éditer** : ouvre l'éditeur (uniquement en mode édition).
-- Le menu se ferme au clic sur le fond, avec `Échap`, en déplaçant une idée ou la vue.
-- Focus en deux clics : clic sur l'idée → Focus. Au clavier : `F` sur la sélection.
-
-### Mode navigation / édition (barre flottante en bas à droite du canvas)
-- **Mode édition** (icône crayon, par défaut) : double-clic / double-tap sur une idée → ouvre son éditeur.
-- **Mode navigation** (icône œil) : double-clic / double-tap sur une idée → entre directement dans sa carte.
-- Le choix est mémorisé dans le navigateur. Raccourci `L`.
 
 ### Flèches de profondeur
 - À côté de chaque idée, deux flèches :
@@ -75,7 +95,7 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
   - ↓ pleine si la carte de l'idée contient des idées, estompée si elle est vide : entre dans la carte.
 
 ### Favoris
-- N'importe quelle idée peut être mise en favori (éditeur de l'idée, ou `B` sur la sélection) ;
+- N'importe quelle idée peut être mise en favori (lecteur, éditeur, réglages, ou `B` sur la sélection) ;
   une icône le signale sur l'idée.
 - Bouton favoris dans la barre flottante du canvas (en bas à droite) (et groupe « Favoris » dans la palette) :
   choisir un favori ouvre la bonne carte, sélectionne l'idée et centre la vue dessus.
@@ -85,10 +105,11 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 - Glisser depuis le bord gauche de l'écran vers la droite (mobile) — ou le bouton « précédent »
   du navigateur — revient à la position précédente : carte précédente et vue telle qu'on l'avait laissée.
 
-### Souris
-- Double-clic sur le fond : créer un nœud.
-- Glisser depuis le bord d'un nœud vers un autre : créer un lien.
+### Souris (déverrouillé)
+- Double-clic sur le fond : créer une idée (l'éditeur s'ouvre).
+- Glisser depuis le bord d'une idée vers une autre : créer un lien.
 - Clic sur un lien : l'éditer (flèches, label, couleur, épaisseur…).
+- Clic sur une idée : la vue se recentre si elle n'est pas entièrement visible.
 
 ### Clavier
 | Touche | Action |
@@ -97,15 +118,15 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 | `Ctrl+Z` | annuler |
 | `Ctrl+Maj+Z` / `Ctrl+Y` | rétablir |
 | `←` `↑` `→` `↓` | sélectionner le nœud voisin dans cette direction |
-| `Entrée` | entrer dans la carte du nœud sélectionné |
+| `Entrée` | explorer l'idée sélectionnée (entrer dans sa carte) |
 | `Échap` / `Alt+↑` | remonter à la carte parente |
-| `E` / `F2` | éditer le nœud sélectionné |
-| `N` | nouveau nœud au centre de la vue |
-| `Tab` | nouveau nœud relié au nœud sélectionné |
-| `F` | focus : centrer la vue sur la sélection |
+| `Espace` / `E` / `F2` | lire (verrouillé) ou éditer (déverrouillé) l'idée sélectionnée |
+| `N` | nouvelle idée au centre de la vue (déverrouillé) |
+| `Tab` | nouvelle idée reliée à la sélection (déverrouillé) |
+| `F` | centrer la vue sur la sélection |
 | `B` | ajouter / retirer la sélection des favoris |
-| `L` | basculer mode navigation / édition |
-| `Suppr` / `Retour arrière` | supprimer la sélection |
+| `L` | verrouiller / déverrouiller le canvas |
+| `Suppr` / `Retour arrière` | supprimer la sélection (déverrouillé) |
 
 ### Annuler / rétablir
 - Toute modification du contenu d'un projet est annulable : nœuds, liens, déplacements,

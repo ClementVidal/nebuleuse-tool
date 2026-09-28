@@ -3,16 +3,19 @@ import type { NodeTemplate } from '@/db/types'
 
 export interface MapActions {
   templates: Map<string, NodeTemplate>
+  /** Enter the idea's own map ("Explorer l'idée"). */
   openNode: (nodeId: string) => void
-  editNode: (nodeId: string) => void
+  openSettings: (nodeId: string) => void
+  /** Delete an idea (asks for confirmation when its map has content). */
+  requestDelete: (nodeId: string) => void
   /** Go to the parent map; undefined on a project's root map. */
   navigateUp: (() => void) | undefined
   /** Number of ideas in each child map, keyed by map id. */
   childMapSizes: Map<string, number>
   /** Node whose click menu is open. */
   menuNodeId: string | undefined
+  /** Read-only canvas (see lock-store). */
   locked: boolean
-  focusNode: (nodeId: string) => void
   closeMenu: () => void
 }
 

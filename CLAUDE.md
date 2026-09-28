@@ -18,7 +18,9 @@ Guide for working in this repository. Product spec: `SPEC.md` (French). UI copy 
   - `map-canvas.tsx` owns React Flow state. DB → RF sync spreads the previous RF node/edge first so React Flow's internal state (`measured`, selection…) survives; dropping `measured` makes edges disappear.
   - Positions are persisted on drag stop, sizes on resize end (`idea-node.tsx`), viewport on move end.
   - `link-edge.tsx` floating edges (anchored on node borders, handles are only for connecting) with custom arrowheads; `geometry.ts` holds the maths.
-  - Navigation: `lock-store.ts` (double-click edits when locked, enters when unlocked), depth arrows in `idea-node.tsx`, bookmarks (`bookmarkedAt` on nodes) in `canvas-toolbar.tsx`. Use `useGoToNode()` to jump to any node: it navigates with `?focus=` or, on the same map, sends a `focus-node` map command.
+  - Lock (`lock-store.ts`): locked = read-only canvas (click menu: "Explorer l'idée"; double-click: reader), unlocked = editing (menu: explore / settings / delete; double-click: editor). Reading comfort is the product's priority.
+  - `idea-document.tsx` is the full-page reader / editor (reading font, measure, ToC, progress; double-click or double-tap closes the reader). `node-settings-sheet.tsx` holds everything but title and content. `components/rich-text-editor.tsx` is the Tiptap editor (Markdown in/out); reader and editor share the `.doc-prose` typography in `index.css`.
+  - Navigation: depth arrows in `idea-node.tsx`, bookmarks (`bookmarkedAt` on nodes) in `canvas-toolbar.tsx`. Use `useGoToNode()` to jump to any node: it navigates with `?focus=` or, on the same map, sends a `focus-node` map command.
   - Keyboard shortcuts are a window listener in `map-canvas.tsx`; they're ignored while typing or when a dialog is open. Keep `keyboard-help.tsx` and `SPEC.md` in sync when changing them.
 - `src/features/templates/` — per-project template editor. `src/features/projects/` — project list.
 - `src/features/shell/` — root layout: command palette (`Ctrl+K`, shadcn Command/cmdk) and global undo/redo shortcuts. The palette talks to the open canvas through `map-commands.ts` (window events).

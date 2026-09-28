@@ -177,6 +177,7 @@ export function MapPage({ projectId, mapId, focusNodeId }: MapPageProps) {
             onNavigateUp={parentNode ? navigateUp : undefined}
             onSelectTemplateIndex={selectTemplateIndex}
             onFocusConsumed={dropFocusFromUrl}
+            mapLabel={breadcrumb.at(-1)?.label ?? project.name}
           />
         </ReactFlowProvider>
       </main>
