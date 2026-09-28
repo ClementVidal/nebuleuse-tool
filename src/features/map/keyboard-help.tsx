@@ -15,6 +15,8 @@ const SHORTCUTS: [string, string][] = [
   ['B', 'Ajouter / retirer la sélection des favoris'],
   ['Clic idée', 'Menu : explorer · réglages · supprimer'],
   ['Double-clic idée', 'Lire (verrouillé) · éditer (déverrouillé)'],
+  ['Clic lien', "Aller à l'idée à l'autre bout"],
+  ['Glisser un +', 'Relier à une idée, ou créer une idée reliée'],
   ['N · double-clic fond', 'Nouvelle idée (déverrouillé)'],
   ['Tab', 'Nouvelle idée reliée (déverrouillé)'],
   ['1 … 9', 'Choisir le template de création'],

@@ -1,6 +1,6 @@
-import { Handle, NodeResizer, NodeToolbar, Position, type Node, type NodeProps } from '@xyflow/react'
-import { ArrowDown, ArrowUp, Bookmark, CornerDownRight, Settings2, Trash2 } from 'lucide-react'
-import { memo, useMemo } from 'react'
+import { Handle, NodeResizer, NodeToolbar, Position, type Node, type NodeProps, type OnResizeEnd } from '@xyflow/react'
+import { ArrowDown, ArrowUp, Bookmark, CornerDownRight, Plus, Settings2, Trash2 } from 'lucide-react'
+import { memo, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { updateNode } from '@/db/actions'
 import type { IdeaNode as IdeaNodeModel } from '@/db/types'
@@ -10,6 +10,12 @@ import { markdownToHtml } from './markdown'
 import { nodeBoxClass, nodeBoxStyle, nodeTitleColor, templateStyle } from './node-style'
 
 export type IdeaFlowNode = Node<{ model: IdeaNodeModel }, 'idea'>
+
+const LINK_HANDLES = [
+  { position: Position.Right, id: 'right' },
+  { position: Position.Bottom, id: 'bottom' },
+  { position: Position.Left, id: 'left' },
+]
 
 /** A rich-text field rendered as HTML, or a short "label : value" line for dates and numbers. */
 type NodeContent = { id: string; html: string } | { id: string; meta: string }
@@ -22,6 +28,12 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
   const box = nodeBoxStyle(style)
   const childSize = model.childMapId ? (childMapSizes.get(model.childMapId) ?? 0) : 0
   const hasChildMap = childSize > 0
+  // Must stay stable: React Flow rebuilds its drag handler when this changes, which drops an
+  // ongoing touch gesture (resizing on mobile froze after the first move).
+  const onResizeEnd: OnResizeEnd = useCallback(
+    (_, { x, y, width, height }) => void updateNode(model.id, { x, y, width, height }),
+    [model.id],
+  )
 
   const content = useMemo(() => {
     if (!template) return []
@@ -41,7 +53,7 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
         minWidth={120}
         minHeight={60}
         color="var(--sketch-blue)"
-        onResizeEnd={(_, { x, y, width, height }) => void updateNode(model.id, { x, y, width, height })}
+        onResizeEnd={onResizeEnd}
       />
       {/* A card stacked behind hints that the node opens onto a deeper map. */}
       {hasChildMap && (
@@ -49,7 +61,7 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
       )}
       <div
         className={cn(
-          'relative flex h-full flex-col gap-1.5 overflow-hidden rounded-lg px-3.5 py-3 shadow-sm transition-shadow',
+          'idea-box relative flex h-full flex-col gap-1.5 overflow-hidden rounded-lg px-3.5 py-3 shadow-sm transition-shadow',
           nodeBoxClass(style),
           selected && 'ring-2 ring-[var(--sketch-blue)] ring-offset-2 ring-offset-[var(--canvas)]',
         )}
@@ -160,10 +172,13 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
         </div>
       </NodeToolbar>
 
-      <Handle type="source" position={Position.Top} id="top" />
-      <Handle type="source" position={Position.Right} id="right" />
-      <Handle type="source" position={Position.Bottom} id="bottom" />
-      <Handle type="source" position={Position.Left} id="left" />
+      {/* Link grips: drag one onto another idea to link them, or onto empty space to create a
+          linked idea. None on top, where the click menu sits (edges float anyway). */}
+      {LINK_HANDLES.map(({ position, id }) => (
+        <Handle key={id} type="source" position={position} id={id} className="link-grip" title="Glisser pour relier">
+          <Plus />
+        </Handle>
+      ))}
     </div>
   )
 }

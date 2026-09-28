@@ -2,7 +2,9 @@ import { EdgeLabelRenderer, useInternalNode, type Edge, type EdgeProps, type Int
 import { memo, useMemo } from 'react'
 import { colorCss, STROKE_WIDTHS } from '@/db/palette'
 import type { EdgeDash, IdeaEdge } from '@/db/types'
+import { cn } from '@/lib/utils'
 import { arrowheadWings, edgeGeometry, insetPath, type Point, type Rect } from './geometry'
+import { useMapActions } from './map-context'
 
 export type LinkFlowEdge = Edge<{ model: IdeaEdge }, 'link'>
 
@@ -26,7 +28,8 @@ function arrowhead(tip: Point, dir: Point, size: number): string {
   return `M ${tip.x} ${tip.y} L ${a.x} ${a.y} L ${b.x} ${b.y} Z`
 }
 
-function LinkEdgeView({ source, target, data, selected }: EdgeProps<LinkFlowEdge>) {
+function LinkEdgeView({ id, source, target, data, selected }: EdgeProps<LinkFlowEdge>) {
+  const { locked, editEdge, followEdge } = useMapActions()
   const sourceNode = useInternalNode(source)
   const targetNode = useInternalNode(target)
   const model = data?.model
@@ -82,17 +85,30 @@ function LinkEdgeView({ source, target, data, selected }: EdgeProps<LinkFlowEdge
         className="react-flow__edge-interaction"
         style={{ fill: 'none', stroke: 'transparent', strokeWidth: 20 }}
       />
-      {model.label && (
+      {/* Label: click to rename / restyle the link (unlocked), or to follow it (locked). Unnamed
+          links show a small dot instead, when they can be edited. */}
+      {(model.label || !locked) && (
         <EdgeLabelRenderer>
-          <div
-            className="nodrag nopan pointer-events-auto absolute max-w-48 truncate rounded-full border border-border/60 bg-canvas px-2.5 py-0.5 text-xs font-medium shadow-xs"
+          <button
+            type="button"
+            title={locked ? 'Aller à l’autre idée' : 'Modifier le lien'}
+            className={cn(
+              'link-label nodrag nopan pointer-events-auto absolute',
+              model.label ? 'max-w-44 truncate px-2 py-px' : 'link-label-dot',
+              selected && 'link-label-selected',
+            )}
             style={{
               transform: `translate(-50%, -50%) translate(${shape.geometry.labelAt.x}px, ${shape.geometry.labelAt.y}px)`,
-              color,
+              ['--link-color' as string]: color,
+            }}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (locked) followEdge(id, { x: e.clientX, y: e.clientY })
+              else editEdge(id)
             }}
           >
             {model.label}
-          </div>
+          </button>
         </EdgeLabelRenderer>
       )}
     </>

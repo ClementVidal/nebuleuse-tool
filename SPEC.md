@@ -43,8 +43,9 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 
 ### Lien
 - Relie deux nœuds d'une même carte.
+- **Nom** : « lié à » par défaut (la relation se lit « A lié à B »), renommable.
 - **Flèches** : aucune, au début, à la fin, aux deux extrémités.
-- **Label** (texte libre), **couleur** (palette limitée), **épaisseur** (fine / moyenne / épaisse),
+- **Couleur** (palette limitée), **épaisseur** (fine / moyenne / épaisse),
   **tracé** (droit / courbe), **trait** (plein / tirets / pointillés).
 
 ## Style visuel
@@ -108,11 +109,20 @@ Mémorisé dans le navigateur ; raccourci `L`. Double-clic et double-tap sont é
 - Glisser depuis le bord gauche de l'écran vers la droite (mobile) — ou le bouton « précédent »
   du navigateur — revient à la position précédente : carte précédente et vue telle qu'on l'avait laissée.
 
-### Souris (déverrouillé)
+### Souris et tactile
+- Clic / tap sur une idée : la vue s'ajuste sur l'idée (zoom arrière si besoin), avec une marge
+  tout autour pour voir les liens qui en partent.
+- Clic / tap sur un lien : va à l'idée à l'autre bout (celle qui n'est pas sélectionnée, sinon la
+  plus éloignée du clic), sélectionnée et ajustée de la même façon.
+
+Déverrouillé :
 - Double-clic sur le fond : créer une idée (l'éditeur s'ouvre).
-- Glisser depuis le bord d'une idée vers une autre : créer un lien.
-- Clic sur un lien : l'éditer (flèches, label, couleur, épaisseur…).
-- Clic sur une idée : la vue se recentre si elle n'est pas entièrement visible.
+- Poignées **+** autour de l'idée survolée ou sélectionnée (droite, bas, gauche) : les glisser
+  - sur une autre idée : crée un lien, sélectionné, son nom prêt à être modifié ;
+  - dans le vide : crée une idée reliée à cet endroit (l'éditeur s'ouvre).
+- Clic sur le nom d'un lien (ou sur son point s'il n'a pas de nom) : l'éditer (nom, flèches,
+  couleur, épaisseur…).
+- Poignées de redimensionnement aux coins et côtés de l'idée sélectionnée (plus grandes au doigt).
 
 ### Clavier
 | Touche | Action |

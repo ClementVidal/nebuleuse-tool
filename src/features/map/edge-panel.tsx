@@ -26,18 +26,35 @@ const DASH_OPTIONS: { value: EdgeDash; label: string; icon: React.ReactNode }[] 
   { value: 'dotted', label: 'Pointillés', icon: <span className="block h-0.5 w-5 bg-[repeating-linear-gradient(90deg,currentColor_0_2px,transparent_2px_5px)]" /> },
 ]
 
-/** Floating panel to style the selected edge. */
-export function EdgePanel({ edge }: { edge: IdeaEdge }) {
+interface EdgePanelProps {
+  edge: IdeaEdge
+  sourceTitle: string | undefined
+  targetTitle: string | undefined
+  /** Focus and select the name right away (a link that was just drawn). */
+  autoFocusLabel?: boolean
+}
+
+/** Floating panel to name and style the selected edge. */
+export function EdgePanel({ edge, sourceTitle, targetTitle, autoFocusLabel }: EdgePanelProps) {
   const set = (changes: Partial<IdeaEdge>) => updateEdge(edge.id, changes)
+  // No keyboard popping up on phones: only focus with a mouse / trackpad.
+  const focusLabel = autoFocusLabel && matchMedia('(pointer: fine)').matches
   return (
     <Card className="w-72 gap-0 py-3 shadow-lg">
       <CardContent className="grid gap-3 px-3">
+        <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground" title={`${sourceTitle ?? ''} → ${targetTitle ?? ''}`}>
+          <span className="truncate font-medium text-foreground">{sourceTitle || 'Sans titre'}</span>
+          <ArrowRight className="size-3.5 shrink-0" />
+          <span className="truncate font-medium text-foreground">{targetTitle || 'Sans titre'}</span>
+        </p>
         <div className="grid gap-1.5">
-          <Label htmlFor="edge-label">Label</Label>
+          <Label htmlFor="edge-label">Nom du lien</Label>
           <Input
             key={edge.id}
             id="edge-label"
-            placeholder="Relation…"
+            placeholder="lié à, cause, s’oppose à…"
+            autoFocus={focusLabel}
+            onFocus={(e) => focusLabel && e.currentTarget.select()}
             defaultValue={edge.label}
             onChange={(e) => updateEdge(edge.id, { label: e.target.value }, { coalesceKey: `edge-label:${edge.id}` })}
           />

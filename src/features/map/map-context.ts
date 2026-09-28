@@ -17,6 +17,10 @@ export interface MapActions {
   /** Read-only canvas (see lock-store). */
   locked: boolean
   closeMenu: () => void
+  /** Click on a link: select and reveal the idea at its other end. */
+  followEdge: (edgeId: string, clientPoint?: { x: number; y: number }) => void
+  /** Select a link to edit it (unlocked). */
+  editEdge: (edgeId: string) => void
 }
 
 export const MapContext = createContext<MapActions | null>(null)

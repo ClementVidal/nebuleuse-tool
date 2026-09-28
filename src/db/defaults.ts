@@ -10,8 +10,9 @@ export const DEFAULT_NODE_STYLE: NodeStyle = {
   shape: 'card',
 }
 
+/** New links read as a sentence, "A lié à B", until renamed. */
 export const DEFAULT_EDGE: Pick<IdeaEdge, 'label' | 'arrows' | 'color' | 'strokeWidth' | 'path' | 'dash'> = {
-  label: '',
+  label: 'lié à',
   arrows: 'end',
   color: 'ink',
   strokeWidth: 'medium',

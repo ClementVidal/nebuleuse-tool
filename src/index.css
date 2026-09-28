@@ -151,15 +151,77 @@
   box-shadow: none;
 }
 
-.react-flow__handle {
+/* Link grips: round "+" buttons just outside the node, shown on hover and on the selected node. */
+.react-flow__handle.link-grip {
+  width: 22px;
+  height: 22px;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--sketch-blue);
+  border-radius: 9999px;
+  background: var(--background);
+  color: var(--sketch-blue);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
   opacity: 0;
-  transition: opacity 120ms;
+  transition: opacity 120ms, background-color 120ms, color 120ms, scale 120ms;
+}
+.react-flow__handle.link-grip > svg { width: 13px; height: 13px; stroke-width: 2.5; pointer-events: none; }
+/* Larger invisible hit area for fingers. */
+.react-flow__handle.link-grip::before { content: ""; position: absolute; inset: -11px; border-radius: 9999px; }
+.react-flow__handle.link-grip.react-flow__handle-right { right: -17px; }
+.react-flow__handle.link-grip.react-flow__handle-left { left: -17px; }
+.react-flow__handle.link-grip.react-flow__handle-bottom { bottom: -17px; }
+.react-flow__handle.link-grip:hover,
+.react-flow__handle.link-grip.connectingfrom {
+  background: var(--sketch-blue);
+  color: var(--background);
+  scale: 1.12;
 }
 .react-flow__node:hover .react-flow__handle,
 .react-flow__node.selected .react-flow__handle,
-.react-flow.connecting .react-flow__handle {
+.react-flow__handle.connectingfrom {
   opacity: 1;
 }
+/* The hovered idea comes to the front, so its grips are never covered by a neighbour. */
+.react-flow__node-idea:hover { z-index: 1001 !important; }
+
+/* While drawing a link: every grip shows, and the idea under the pointer is highlighted. */
+.is-connecting .react-flow__handle.link-grip { opacity: 1; }
+.is-connecting .react-flow__node-idea:hover .idea-box,
+.react-flow__node-idea:has(.connectingto) .idea-box { outline: 2px solid var(--sketch-blue); outline-offset: 3px; }
+
+/* Resize handles: round and larger, easier to grab (much larger hit area on touch screens). */
+.react-flow__resize-control.handle {
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--background);
+  border-radius: 9999px;
+}
+@media (pointer: coarse) {
+  .react-flow__resize-control.handle { width: 14px; height: 14px; }
+  .react-flow__resize-control.handle::before { content: ""; position: absolute; inset: -12px; }
+}
+
+/* Link labels: a quiet, editorial caption on the line. */
+.link-label {
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  background: var(--canvas);
+  font-family: var(--reading-font);
+  font-size: 12.5px;
+  font-style: italic;
+  line-height: 1.5;
+  color: color-mix(in oklab, var(--link-color) 55%, var(--muted-foreground));
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms;
+}
+.link-label:hover { color: var(--foreground); border-color: var(--border); }
+.link-label-selected { color: var(--foreground); border-color: var(--sketch-blue); }
+.link-label-dot { width: 10px; height: 10px; padding: 0; border-color: var(--link-color); }
+.link-label-dot::before { content: ""; position: absolute; inset: -10px; }
+.react-flow__edge { cursor: pointer; }
 
 /* Post-it nodes: folded bottom-right corner. */
 .node-sticky::after {

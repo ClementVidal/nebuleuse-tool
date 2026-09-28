@@ -20,7 +20,9 @@ Guide for working in this repository. Product spec: `SPEC.md` (French). UI copy 
 - `src/features/map/` — the canvas.
   - `map-canvas.tsx` owns React Flow state. DB → RF sync spreads the previous RF node/edge first so React Flow's internal state (`measured`, selection…) survives; dropping `measured` makes edges disappear.
   - Positions are persisted on drag stop, sizes on resize end (`idea-node.tsx`), viewport on move end.
-  - `link-edge.tsx` floating edges (anchored on node borders, handles are only for connecting) with custom arrowheads; `geometry.ts` holds the maths.
+  - `link-edge.tsx` floating edges (anchored on node borders, handles are only for connecting) with custom arrowheads; `geometry.ts` holds the maths. Handles are the round "+" `.link-grip`s; a link dropped off a grip is handled in `onConnectEnd` (onto an idea: link; onto the pane: new linked idea). Clicking an edge follows it (`followEdge`); its label edits it.
+  - `revealNode` fits a node with margins (links stay visible); used on click, edge follow, focus.
+  - Callbacks passed to React Flow's `NodeResizer` must be stable (useCallback): a new function rebuilds its drag handler and kills an ongoing touch resize.
   - Lock (`lock-store.ts`): locked = read-only canvas (click menu: "Explorer l'idée"; double-click: reader), unlocked = editing (menu: explore / settings / delete; double-click: editor). Reading comfort is the product's priority.
   - `idea-document.tsx` is the full-page reader / editor (reading font, measure, ToC, progress; double-click or double-tap closes the reader). `node-settings-sheet.tsx` holds everything but title and content. `components/rich-text-editor.tsx` is the Tiptap editor (Markdown in/out); reader and editor share the `.doc-prose` typography in `index.css`.
   - Navigation: depth arrows in `idea-node.tsx`, bookmarks (`bookmarkedAt` on nodes) in `canvas-toolbar.tsx`. Use `useGoToNode()` to jump to any node: it navigates with `?focus=` or, on the same map, sends a `focus-node` map command.
