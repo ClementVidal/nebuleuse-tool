@@ -282,9 +282,11 @@ function DocumentBody({ node, mode, template, childSize, location, onClose, onDi
               )}
             </div>
 
-            <DigFooter childSize={childSize} onDig={() => onDig(node.id)}>
-              {reading && <p className="mt-6 text-center text-xs text-muted-foreground">Double-clic ou double-tap pour fermer</p>}
-            </DigFooter>
+            {reading && (
+              <DigFooter childSize={childSize} onDig={() => onDig(node.id)}>
+                <p className="mt-6 text-center text-xs text-muted-foreground">Double-clic ou double-tap pour fermer</p>
+              </DigFooter>
+            )}
           </article>
         </div>
       </div>
