@@ -591,13 +591,8 @@ export function MapCanvas({
         node={docNode}
         mode={doc?.mode ?? 'read'}
         template={docNode && templatesById.get(docNode.templateId)}
-        childSize={sizeOf(docNode)}
         location={mapLabel}
         onClose={() => setDoc(undefined)}
-        onDig={(id) => {
-          setDoc(undefined)
-          onOpenNode(id)
-        }}
       />
       <NodeSettingsSheet node={settingsNode} templates={templates} onClose={() => setSettingsNodeId(undefined)} />
       <AlertDialog open={deleteNode !== undefined} onOpenChange={(open) => !open && setDeleteRequestId(undefined)}>

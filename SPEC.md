@@ -77,7 +77,7 @@ Mémorisé dans le navigateur ; raccourci `L`. Double-clic et double-tap sont é
 - Page dédiée (plein écran sur mobile) : police de lecture (Literata), ~65 caractères par ligne,
   interligne généreux, taille de texte réglable (mémorisée).
 - Temps de lecture et nombre de mots, barre de progression, sommaire des titres (écran large),
-  champs date / nombre en métadonnées, « Explorer l'idée » en fin de page, favori.
+  champs date / nombre en métadonnées, favori.
 - Un double-clic ou double-tap n'importe où ferme le lecteur (ainsi que `Échap` ou la croix).
 
 ### Éditeur

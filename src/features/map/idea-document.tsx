@@ -1,5 +1,5 @@
-import { AArrowDown, AArrowUp, Bookmark, BookmarkCheck, BookOpen, CornerDownRight, PenLine, X } from 'lucide-react'
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { AArrowDown, AArrowUp, Bookmark, BookmarkCheck, BookOpen, PenLine, X } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { RichTextEditor } from '@/components/rich-text-editor'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -17,12 +17,9 @@ interface IdeaDocumentProps {
   node: IdeaNode | undefined
   mode: DocumentMode
   template: NodeTemplate | undefined
-  /** Number of ideas in the idea's own map (0 if empty or not created yet). */
-  childSize: number
   /** Where the idea lives (parent idea title or project name). */
   location: string
   onClose: () => void
-  onDig: (nodeId: string) => void
 }
 
 /**
@@ -76,7 +73,7 @@ interface Heading {
   level: number
 }
 
-function DocumentBody({ node, mode, template, childSize, location, onClose, onDig }: IdeaDocumentProps & { node: IdeaNode }) {
+function DocumentBody({ node, mode, template, location, onClose }: IdeaDocumentProps & { node: IdeaNode }) {
   const reading = mode === 'read'
   const style = templateStyle(template)
   const accent = colorCss(style.color)
@@ -255,7 +252,7 @@ function DocumentBody({ node, mode, template, childSize, location, onClose, onDi
               </div>
             )}
 
-            <div className="mt-8 grid gap-10">
+            <div className="mt-8 grid grid-cols-1 gap-10">
               {richFields.map((field) => {
                 const value = String(node.values[field.id] ?? '')
                 return (
@@ -283,28 +280,12 @@ function DocumentBody({ node, mode, template, childSize, location, onClose, onDi
             </div>
 
             {reading && (
-              <DigFooter childSize={childSize} onDig={() => onDig(node.id)}>
-                <p className="mt-6 text-center text-xs text-muted-foreground">Double-clic ou double-tap pour fermer</p>
-              </DigFooter>
+              <p className="mt-16 border-t pt-8 text-center text-xs text-muted-foreground">Double-clic ou double-tap pour fermer</p>
             )}
           </article>
         </div>
       </div>
     </>
-  )
-}
-
-function DigFooter({ childSize, onDig, children }: { childSize: number; onDig: () => void; children?: ReactNode }) {
-  return (
-    <div className="mt-16 border-t pt-8">
-      <Button size="lg" className="w-full sm:w-auto" onClick={onDig}>
-        <CornerDownRight /> Explorer l’idée
-        <span className="font-normal opacity-70">
-          {childSize > 0 ? `· ${childSize} idée${childSize > 1 ? 's' : ''}` : '· carte vide'}
-        </span>
-      </Button>
-      {children}
-    </div>
   )
 }
 

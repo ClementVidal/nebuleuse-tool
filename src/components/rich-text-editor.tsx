@@ -129,7 +129,7 @@ function Toolbar({ editor }: { editor: Editor }) {
   const chain = () => editor.chain().focus()
 
   return (
-    <div className="rich-text-toolbar flex items-center gap-0.5 overflow-x-auto">
+    <div className="rich-text-toolbar flex flex-wrap items-center gap-0.5">
       <ToolButton label="Annuler" onClick={() => chain().undo().run()}>
         <Undo2 className={cn(!s.canUndo && 'opacity-40')} />
       </ToolButton>
