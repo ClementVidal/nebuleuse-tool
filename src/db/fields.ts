@@ -38,18 +38,24 @@ export function defaultValues(fields: TemplateField[]): Record<string, FieldValu
 export function parseIsoDate(iso: string | undefined | null): Date | undefined {
   if (!iso) return undefined
   const [y, m, d] = iso.split('-').map(Number)
-  return y ? new Date(y, (m ?? 1) - 1, d ?? 1) : undefined
+  if (!y) return undefined
+  // setFullYear: `new Date(50, …)` would mean 1950 — historical dates need the real year.
+  const date = new Date(2000, (m ?? 1) - 1, d ?? 1)
+  date.setFullYear(y)
+  return date
 }
 
 export function toIsoDate(date: Date): string {
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`
+  const p = (n: number, width = 2) => String(n).padStart(width, '0')
+  return `${p(date.getFullYear(), 4)}-${p(date.getMonth() + 1)}-${p(date.getDate())}`
 }
 
 /** Days since epoch, for positioning dates on a timeline. */
 export function isoToDay(iso: string): number {
   const [y, m, d] = iso.split('-').map(Number)
-  return Date.UTC(y, (m ?? 1) - 1, d ?? 1) / 86_400_000
+  const date = new Date(Date.UTC(2000, (m ?? 1) - 1, d ?? 1))
+  date.setUTCFullYear(y)
+  return date.getTime() / 86_400_000
 }
 
 export function formatDate(iso: string | undefined | null, style: 'long' | 'medium' | 'short' = 'long'): string {

@@ -28,6 +28,13 @@ interface TimelineProps {
 }
 
 const DAY_MS = 86_400_000
+
+/** Day number of a UTC date; unlike Date.UTC, years below 100 aren't read as 19xx. */
+function utcDay(y: number, m: number, d = 1) {
+  const date = new Date(Date.UTC(2000, m, d))
+  date.setUTCFullYear(y)
+  return date.getTime() / DAY_MS
+}
 const MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 
 interface Tick {
@@ -44,7 +51,7 @@ function axisTicks(lo: number, hi: number, target: number): Tick[] {
     const years = span / 365.25
     const step = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500].find((s) => years / s <= target) ?? 1000
     for (let y = Math.ceil(from.getUTCFullYear() / step) * step; ; y += step) {
-      const day = Date.UTC(y, 0, 1) / DAY_MS
+      const day = utcDay(y, 0)
       if (day > hi) break
       if (day >= lo) ticks.push({ day, label: String(y) })
     }
@@ -56,7 +63,7 @@ function axisTicks(lo: number, hi: number, target: number): Tick[] {
     for (;;) {
       y += Math.floor(m / 12)
       m %= 12
-      const day = Date.UTC(y, m, 1) / DAY_MS
+      const day = utcDay(y, m)
       if (day > hi) break
       if (day >= lo)
         ticks.push({

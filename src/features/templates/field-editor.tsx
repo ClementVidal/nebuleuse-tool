@@ -79,11 +79,30 @@ export function FieldEditor({ field, index, count, timelineListId, defaultOpen =
       </div>
 
       {/* Summary of the options while folded. */}
-      {!open && (!visible || field.readOnly || (timeline && field.timelineName) || field.description) && (
+      {/* Timeline name: always visible for dates and periods, it's what groups them on a timeline. */}
+      {timeline && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pb-3 sm:pl-12">
+          <label htmlFor={`timeline-${field.id}`} className="text-sm font-medium">
+            Frise
+          </label>
+          <Input
+            id={`timeline-${field.id}`}
+            list={timelineListId}
+            className="h-8 max-w-64 flex-1 basis-40"
+            placeholder="ex. Histoire, Projet, Vie"
+            defaultValue={field.timelineName ?? ''}
+            onChange={(e) => onChange({ timelineName: e.target.value || undefined }, `field-timeline:${field.id}`)}
+          />
+          <p className="basis-full text-xs text-muted-foreground">
+            Les dates et périodes des idées qui partagent ce nom de frise s’affichent ensemble.
+          </p>
+        </div>
+      )}
+
+      {!open && (!visible || field.readOnly || field.description) && (
         <div className="flex flex-wrap gap-1.5 px-12 pb-2.5">
           {!visible && <Badge variant="secondary">Masqué sur l’idée</Badge>}
           {field.readOnly && <Badge variant="secondary">Lecture seule</Badge>}
-          {timeline && field.timelineName && <Badge variant="outline">Frise : {field.timelineName}</Badge>}
           {field.description && <span className="truncate text-xs text-muted-foreground">{field.description}</span>}
         </div>
       )}
@@ -122,22 +141,6 @@ export function FieldEditor({ field, index, count, timelineListId, defaultOpen =
             <DefaultValueInput field={field} id={`default-${field.id}`} onChange={onChange} />
           </div>
 
-          {timeline && (
-            <div className="grid gap-1.5">
-              <Label htmlFor={`timeline-${field.id}`}>Frise</Label>
-              <Input
-                id={`timeline-${field.id}`}
-                list={timelineListId}
-                placeholder="ex. Histoire, Projet, Vie"
-                defaultValue={field.timelineName ?? ''}
-                onChange={(e) => onChange({ timelineName: e.target.value || undefined }, `field-timeline:${field.id}`)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Les dates et périodes de toutes les idées partageant ce nom de frise s’affichent ensemble : celle de l’idée
-                au premier plan, les autres en arrière-plan.
-              </p>
-            </div>
-          )}
         </div>
       )}
     </div>

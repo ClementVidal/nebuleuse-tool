@@ -15,7 +15,8 @@ import { setBookmarked, updateNode, updateNodeValue } from '@/db/actions'
 import { colorCss } from '@/db/palette'
 import type { IdeaNode, IdeaStatus, NodeTemplate, TemplateField } from '@/db/types'
 import { cn } from '@/lib/utils'
-import { fieldValue, formatFieldValue, isTimelineField, STATUS_LABELS } from '@/db/fields'
+import { fieldValue, formatFieldValue, isDateRange, isTimelineField, STATUS_LABELS } from '@/db/fields'
+import { DatePicker, DateRangePicker } from '@/components/date-picker'
 import { markdownExcerpt, markdownToHtml } from './markdown'
 import { templateStyle } from './node-style'
 import { StatusDot } from './status'
@@ -272,12 +273,14 @@ function DocumentBody({ node, mode, template, location, onClose }: IdeaDocumentP
                 {metaFields.map((f) =>
                   f.type === 'number' && !f.readOnly ? (
                     <MetaFieldInput key={f.id} node={node} field={f} />
+                  ) : (f.type === 'date' || f.type === 'daterange') && !f.readOnly ? (
+                    <DateMetaField key={f.id} node={node} field={f} />
                   ) : (
-                    // Dates are set in the idea's settings (calendar); read-only values can't change.
+                    // Read-only values can't change.
                     <span
                       key={f.id}
                       className="inline-flex items-center gap-1.5"
-                      title={f.readOnly ? 'Lecture seule' : 'Se modifie dans les réglages de l’idée'}
+                      title="Lecture seule"
                     >
                       {f.label}
                       <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground">
@@ -394,6 +397,22 @@ function StatusPicker({ node }: { node: IdeaNode }) {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+    </span>
+  )
+}
+
+/** Date / period field: a compact calendar pill next to the status. */
+function DateMetaField({ node, field }: { node: IdeaNode; field: TemplateField }) {
+  const value = node.values[field.id]
+  const id = `meta-${field.id}`
+  return (
+    <span className="inline-flex items-center gap-1.5" title={field.description}>
+      <label htmlFor={id}>{field.label}</label>
+      {field.type === 'date' ? (
+        <DatePicker id={id} size="sm" placeholder="—" value={typeof value === 'string' ? value : null} onChange={(v) => updateNodeValue(node.id, field.id, v)} />
+      ) : (
+        <DateRangePicker id={id} size="sm" value={isDateRange(value) ? value : null} onChange={(v) => updateNodeValue(node.id, field.id, v)} />
+      )}
     </span>
   )
 }

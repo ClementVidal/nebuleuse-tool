@@ -8,8 +8,9 @@ import { formatDate, formatRange, parseIsoDate, toIsoDate } from '@/db/fields'
 import type { DateRangeValue } from '@/db/types'
 import { cn } from '@/lib/utils'
 
-// Year dropdowns span a wide range: timelines can be historical.
-const START_MONTH = new Date(1800, 0)
+// Year dropdowns span a wide range: timelines can be historical (from year 1).
+const START_MONTH = new Date(2000, 0)
+START_MONTH.setFullYear(1)
 const END_MONTH = new Date(2100, 11)
 const FORMATTERS = { formatMonthDropdown: (date: Date) => date.toLocaleString('fr-FR', { month: 'short' }) }
 
@@ -20,17 +21,25 @@ interface DatePickerProps {
   placeholder?: string
   className?: string
   id?: string
+  /** Compact pill (meta line of the editor). */
+  size?: 'sm'
 }
 
 /** A pill showing the date; opens a calendar (month / year dropdowns for quick jumps). */
-export function DatePicker({ value, onChange, disabled, placeholder = 'Choisir une date', className, id }: DatePickerProps) {
+export function DatePicker({ value, onChange, disabled, placeholder = 'Choisir une date', className, id, size }: DatePickerProps) {
   const [open, setOpen] = useState(false)
   const selected = parseIsoDate(value)
   return (
     <div className={cn('flex items-center gap-1', className)}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button id={id} variant="outline" disabled={disabled} className={cn('justify-start font-normal', !value && 'text-muted-foreground')}>
+          <Button
+            id={id}
+            variant="outline"
+            size={size}
+            disabled={disabled}
+            className={cn('justify-start font-normal', size === 'sm' && 'h-7 gap-1.5 px-2.5 text-xs font-medium text-foreground', !value && 'text-muted-foreground')}
+          >
             <CalendarDays className="opacity-60" />
             {value ? formatDate(value) : placeholder}
           </Button>
@@ -53,7 +62,7 @@ export function DatePicker({ value, onChange, disabled, placeholder = 'Choisir u
         </PopoverContent>
       </Popover>
       {value && !disabled && (
-        <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label="Effacer la date" onClick={() => onChange(null)}>
+        <Button variant="ghost" size="icon" className={cn('text-muted-foreground', size === 'sm' ? 'size-6' : 'size-8')} aria-label="Effacer la date" onClick={() => onChange(null)}>
           <X />
         </Button>
       )}
@@ -67,10 +76,11 @@ interface DateRangePickerProps {
   disabled?: boolean
   className?: string
   id?: string
+  size?: 'sm'
 }
 
 /** Same for a period: pick the start then the end (two months side by side on wide screens). */
-export function DateRangePicker({ value, onChange, disabled, className, id }: DateRangePickerProps) {
+export function DateRangePicker({ value, onChange, disabled, className, id, size }: DateRangePickerProps) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<{ from?: Date; to?: Date }>()
   const committed = value ? { from: parseIsoDate(value.start), to: parseIsoDate(value.end) } : undefined
@@ -86,7 +96,13 @@ export function DateRangePicker({ value, onChange, disabled, className, id }: Da
         }}
       >
         <PopoverTrigger asChild>
-          <Button id={id} variant="outline" disabled={disabled} className={cn('justify-start font-normal', !value && 'text-muted-foreground')}>
+          <Button
+            id={id}
+            variant="outline"
+            size={size}
+            disabled={disabled}
+            className={cn('justify-start font-normal', size === 'sm' && 'h-7 gap-1.5 px-2.5 text-xs font-medium text-foreground', !value && 'text-muted-foreground')}
+          >
             <CalendarDays className="opacity-60" />
             {value ? formatRange(value) : 'Choisir une période'}
           </Button>
@@ -121,7 +137,7 @@ export function DateRangePicker({ value, onChange, disabled, className, id }: Da
         </PopoverContent>
       </Popover>
       {value && !disabled && (
-        <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label="Effacer la période" onClick={() => onChange(null)}>
+        <Button variant="ghost" size="icon" className={cn('text-muted-foreground', size === 'sm' ? 'size-6' : 'size-8')} aria-label="Effacer la période" onClick={() => onChange(null)}>
           <X />
         </Button>
       )}

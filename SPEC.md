@@ -66,8 +66,11 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 - Langue de l'interface : français.
 
 ### Dates, périodes et frises
-- Les dates et périodes se choisissent dans les **Réglages** de l'idée, avec un calendrier
-  (mois / année en listes déroulantes pour aller vite ; une période = début puis fin).
+- Les dates et périodes se choisissent dans l'**éditeur** de l'idée (sous le titre) ou dans ses
+  **Réglages**, avec un calendrier (mois / année en listes déroulantes, dès l'an 1 ; une période =
+  début puis fin).
+- Dans l'éditeur de templates, le **nom de frise** d'un champ date / période reste toujours visible
+  (même carte repliée).
 - Elles s'affichent sous forme de **frise chronologique** : sur l'idée (si visible), dans le lecteur
   (grand format) et dans les réglages.
 - Toutes les dates et périodes du projet dont les champs partagent un même **nom de frise**
