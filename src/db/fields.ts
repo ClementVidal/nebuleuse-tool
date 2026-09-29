@@ -1,4 +1,6 @@
-import type { DateRangeValue, FieldType, FieldValue, IdeaNode, TemplateField } from './types'
+import type { DateRangeValue, FieldType, FieldValue, IdeaNode, IdeaStatus, TemplateField } from './types'
+
+export const STATUS_LABELS: Record<IdeaStatus, string> = { draft: 'Brouillon', ready: 'Prêt' }
 
 export const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: 'richtext', label: 'Texte riche' },

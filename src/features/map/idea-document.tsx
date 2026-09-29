@@ -15,9 +15,10 @@ import { setBookmarked, updateNode, updateNodeValue } from '@/db/actions'
 import { colorCss } from '@/db/palette'
 import type { IdeaNode, IdeaStatus, NodeTemplate, TemplateField } from '@/db/types'
 import { cn } from '@/lib/utils'
-import { fieldValue, formatFieldValue, isTimelineField } from '@/db/fields'
+import { fieldValue, formatFieldValue, isTimelineField, STATUS_LABELS } from '@/db/fields'
 import { markdownExcerpt, markdownToHtml } from './markdown'
 import { templateStyle } from './node-style'
+import { StatusDot } from './status'
 import { IdeaTimelines } from './timeline'
 
 export type DocumentMode = 'read' | 'edit'
@@ -366,20 +367,6 @@ function TitleInput({ node }: { node: IdeaNode }) {
         editor?.focus()
       }}
     />
-  )
-}
-
-const STATUS_LABELS: Record<IdeaStatus, string> = { draft: 'Brouillon', ready: 'Prêt' }
-
-function StatusDot({ status = 'draft', withLabel }: { status?: IdeaStatus; withLabel?: boolean }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span
-        className={cn('size-2 rounded-full', status !== 'ready' && 'border border-muted-foreground/60')}
-        style={status === 'ready' ? { background: 'var(--sketch-green)' } : undefined}
-      />
-      {withLabel && STATUS_LABELS[status]}
-    </span>
   )
 }
 

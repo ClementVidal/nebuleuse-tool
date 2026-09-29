@@ -58,6 +58,9 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 - On reprend l'**UX** d'Excalidraw (simple, directe, peu de menus, tout au clavier),
   pas son rendu « dessiné à la main » : nœuds et liens nets, sobres.
 - Un nœud qui possède déjà une carte enfant est affiché comme une pile de cartes.
+- Une idée sur la carte est une **miniature de sa page** : mêmes éléments, dans le même ordre —
+  template, titre, ligne de méta (statut, champs nombre), frises, sections de texte (avec leur nom
+  s'il y en a plusieurs) dans la typographie du lecteur, coupées en fondu si la place manque.
 - Palette limitée partagée par les nœuds et les liens (voir `src/db/palette.ts`).
 - Interface autour du canvas : composants shadcn/ui standard, thème clair / sombre.
 - Langue de l'interface : français.

@@ -3,12 +3,13 @@ import { ArrowDown, ArrowUp, Bookmark, CornerDownRight, Plus, Settings2, Trash2 
 import { memo, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { updateNode } from '@/db/actions'
-import { fieldValue, formatFieldValue, isEmptyValue, isTimelineField } from '@/db/fields'
+import { fieldValue, formatFieldValue, isEmptyValue } from '@/db/fields'
 import { colorCss } from '@/db/palette'
 import type { IdeaNode as IdeaNodeModel } from '@/db/types'
 import { cn } from '@/lib/utils'
 import { useMapActions } from './map-context'
 import { markdownToHtml } from './markdown'
+import { StatusDot } from './status'
 import { IdeaTimelines } from './timeline'
 import { nodeBoxClass, nodeBoxStyle, templateStyle } from './node-style'
 
@@ -19,9 +20,6 @@ const LINK_HANDLES = [
   { position: Position.Bottom, id: 'bottom' },
   { position: Position.Left, id: 'left' },
 ]
-
-/** A rich-text field rendered as HTML, or a short "label : value" line for dates and numbers. */
-type NodeContent = { id: string; html: string } | { id: string; meta: string }
 
 function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<IdeaFlowNode>) {
   const { model } = data
@@ -38,15 +36,22 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
     [model.id],
   )
 
-  const content = useMemo(() => {
-    if (!template) return []
-    return template.fields.flatMap((field): NodeContent[] => {
-      if (field.showOnNode === false || isTimelineField(field)) return []
-      const value = fieldValue(model, field)
-      if (isEmptyValue(value)) return []
-      if (field.type === 'richtext') return [{ id: field.id, html: markdownToHtml(String(value)) }]
-      return [{ id: field.id, meta: `${field.label} : ${formatFieldValue(field, value)}` }]
+  // The node is a miniature of the idea's page: same elements, same order (title, meta line,
+  // timelines, text sections), trimmed to what fits.
+  const { chips, sections } = useMemo(() => {
+    const visible = (template?.fields ?? []).filter((f) => f.showOnNode !== false)
+    const chips = visible
+      .filter((f) => f.type === 'number')
+      .flatMap((f) => {
+        const text = formatFieldValue(f, fieldValue(model, f))
+        return text ? [{ id: f.id, label: f.label, text }] : []
+      })
+    const rich = visible.filter((f) => f.type === 'richtext')
+    const sections = rich.flatMap((f) => {
+      const value = fieldValue(model, f)
+      return isEmptyValue(value) ? [] : [{ id: f.id, label: rich.length > 1 ? f.label : undefined, html: markdownToHtml(String(value)) }]
     })
+    return { chips, sections }
   }, [template, model])
 
   return (
@@ -67,7 +72,7 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
       )}
       <div
         className={cn(
-          'idea-box relative flex h-full flex-col gap-1.5 overflow-hidden rounded-lg px-3.5 py-3 shadow-sm transition-shadow',
+          'idea-box relative flex h-full flex-col gap-2 overflow-hidden rounded-lg px-4 pt-3 pb-3.5 shadow-sm transition-shadow',
           nodeBoxClass(style),
           selected && 'ring-2 ring-[var(--sketch-blue)] ring-offset-2 ring-offset-[var(--canvas)]',
         )}
@@ -81,30 +86,39 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
             {model.bookmarkedAt && <Bookmark className="ml-auto size-3.5 shrink-0 fill-current" aria-label="Favori" />}
           </div>
         )}
-        <div className="flex shrink-0 items-start justify-between gap-2">
-          <div className="line-clamp-3 text-[15.5px] leading-snug font-bold tracking-[-0.01em]">{model.title || 'Sans titre'}</div>
+        <div className="line-clamp-3 shrink-0 text-[16px] leading-[1.2] font-bold tracking-[-0.015em] text-balance">
+          {model.title || 'Sans titre'}
         </div>
-        {content.length > 0 && (
+
+        {/* Meta line, as under the page title: status, then number fields. */}
+        <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+          <StatusDot status={model.status} withLabel />
+          {chips.map((c) => (
+            <span key={c.id} className="max-w-full truncate rounded-full bg-muted px-2 py-px">
+              {c.label} : <span className="font-medium text-foreground">{c.text}</span>
+            </span>
+          ))}
+        </div>
+
+        <IdeaTimelines node={model} template={template} accent={colorCss(style.color)} onlyVisibleOnNode className="shrink-0" />
+
+        {sections.length > 0 && (
           // Selected: the text scrolls with the wheel (nowheel keeps the canvas from zooming).
           // Otherwise a fade at the bottom hints that there is more to read.
           <div
             className={cn(
-              'node-prose min-h-0 flex-1',
-              selected ? 'nowheel overflow-y-auto overscroll-contain' : 'overflow-hidden node-prose-fade',
+              'node-prose mt-0.5 min-h-0 flex-1',
+              selected ? 'nowheel overflow-y-auto overscroll-contain' : 'node-prose-fade overflow-hidden',
             )}
           >
-            {content.map((c) =>
-              'html' in c ? (
-                <div key={c.id} dangerouslySetInnerHTML={{ __html: c.html }} />
-              ) : (
-                <p key={c.id} className="text-[13px] opacity-75">
-                  {c.meta}
-                </p>
-              ),
-            )}
+            {sections.map((s) => (
+              <section key={s.id}>
+                {s.label && <h4 className="node-field-label">{s.label}</h4>}
+                <div dangerouslySetInnerHTML={{ __html: s.html }} />
+              </section>
+            ))}
           </div>
         )}
-        <IdeaTimelines node={model} template={template} accent={colorCss(style.color)} onlyVisibleOnNode className="shrink-0" />
       </div>
 
       {/* Depth navigation: up to the parent map, down into this idea's own map. */}
