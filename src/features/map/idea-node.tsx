@@ -1,5 +1,5 @@
 import { Handle, NodeResizer, NodeToolbar, Position, type Node, type NodeProps, type OnResizeEnd } from '@xyflow/react'
-import { ArrowDown, ArrowUp, Bookmark, BringToFront, CornerDownRight, Ellipsis, Plus, SendToBack, Settings2, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Bookmark, BringToFront, CornerDownRight, Ellipsis, Plus, SendToBack, Settings2, Sparkles, Trash2 } from 'lucide-react'
 import { memo, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { restack, updateNode } from '@/db/actions'
@@ -84,6 +84,11 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
           <div className="flex shrink-0 items-center gap-1.5 text-[10.5px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
             <span className="size-1.5 shrink-0 rounded-full" style={{ background: colorCss(style.color) }} />
             <span className="truncate">{template.name}</span>
+            {model.author === 'claude' && (
+              <span className="flex shrink-0 items-center gap-0.5 normal-case tracking-normal" title="Écrite par Claude">
+                · <Sparkles className="size-3" /> Claude
+              </span>
+            )}
             {model.bookmarkedAt && <Bookmark className="ml-auto size-3.5 shrink-0 fill-current" aria-label="Favori" />}
           </div>
         )}

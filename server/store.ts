@@ -37,6 +37,13 @@ const SCHEMA = [
     primary key (user_id, tbl, id)
   )`,
   `create index if not exists records_user_rev on records (user_id, rev)`,
+  // Personal key giving Claude (MCP) access to a user's records; only its SHA-256 is stored.
+  `create table if not exists mcp_tokens (
+    token_hash text primary key,
+    user_id text not null unique,
+    created_at timestamptz not null default now(),
+    last_used_at timestamptz
+  )`,
 ]
 
 const ready = new WeakMap<Sql, Promise<void>>()

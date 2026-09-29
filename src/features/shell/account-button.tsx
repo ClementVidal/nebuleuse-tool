@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { signInWithGoogle, signInWithPassword, signOut, useAccount } from '@/sync/auth'
 import { syncNow, useSyncState, type SyncState } from '@/sync/engine'
 import { cn } from '@/lib/utils'
+import { ClaudeConnect } from './claude-connect'
 
 function ago(ts: number | undefined, now: number) {
   if (!ts) return 'jamais'
@@ -90,6 +91,7 @@ function AccountDetails({ email, sync }: { email: string; sync: SyncState }) {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">Tes cartes restent aussi sur cet appareil, utilisables hors ligne.</p>
+      <ClaudeConnect />
     </div>
   )
 }

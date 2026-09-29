@@ -87,6 +87,10 @@ export interface IdeaNode {
   fullWidth?: boolean
   /** Stacking order on the canvas (higher = in front); absent means 0. */
   z?: number
+  /** Written by Claude through the MCP server (absent: by the user). */
+  author?: 'claude'
+  /** MCP call that created or last changed the idea. */
+  batchId?: string
 }
 
 export type IdeaStatus = 'draft' | 'ready'

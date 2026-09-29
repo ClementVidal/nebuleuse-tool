@@ -194,13 +194,20 @@ Déverrouillé :
   - La première connexion d'un appareil envoie ce qu'il contient déjà.
   - Conflits : la dernière écriture gagne ; une modification locale pas encore envoyée l'emporte
     sur ce qui arrive du serveur.
-- Prochaine étape : un serveur MCP pour que Claude crée et enrichisse les cartes (voir plus bas).
+
+## Claude (serveur MCP)
+- Claude est l'éditeur, l'utilisateur le lecteur : Claude crée et enrichit les cartes depuis claude.ai
+  (ou Claude Desktop / Code) grâce au serveur MCP de l'app ; tout arrive dans l'app par la synchro.
+- Connexion : panneau du nuage → **Connecter Claude** → une adresse personnelle secrète
+  (`/api/mcp/<clé>`) à coller dans claude.ai → Réglages → Connecteurs. Une seule clé par compte,
+  régénérable (l'ancienne cesse de marcher) ou révocable.
+- Outils : `list_projects`, `get_outline` (arbre des cartes), `get_map`, `search`, `list_templates`,
+  `create_project`, `build_map` (idées + liens + sous-cartes en un appel, placement automatique),
+  `update_map` (modifier / supprimer idées et liens, tout ou rien).
+- Les idées écrites par Claude sont marquées « Claude » et arrivent en statut Brouillon.
+- Plus tard : annuler d'un geste un lot écrit par Claude (chaque idée garde l'id de son lot).
 
 ## Hors v1 (plus tard)
 - Export / import JSON d'un projet.
 - Une carte atteignable depuis plusieurs nœuds (graphe plutôt qu'arbre).
-- Synchronisation serveur / multi-utilisateurs.
-- **Serveur MCP** pour qu'un LLM puisse lire et écrire dans les cartes et structurer une pensée :
-  `QueryReflexionMap(mapId, search)` et `PatchReflexionMap(mapId, patch)` (plus probablement
-  `ListProjects` et `OpenNode` pour découvrir les cartes). Prérequis : les données doivent être
-  accessibles hors du navigateur (piste privilégiée : serveur local + SQLite comme source de vérité).
+- Partage et multi-utilisateurs.
