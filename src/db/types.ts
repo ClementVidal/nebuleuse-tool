@@ -85,6 +85,8 @@ export interface IdeaNode {
   status?: IdeaStatus
   /** Reader / editor page spans the full width instead of a centred reading column. */
   fullWidth?: boolean
+  /** Stacking order on the canvas (higher = in front); absent means 0. */
+  z?: number
 }
 
 export type IdeaStatus = 'draft' | 'ready'

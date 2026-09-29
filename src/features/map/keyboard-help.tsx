@@ -21,6 +21,7 @@ const SHORTCUTS: [string, string][] = [
   ['Tab', 'Nouvelle idée reliée (déverrouillé)'],
   ['1 … 9', 'Choisir le template de création'],
   ['Suppr', 'Supprimer la sélection (déverrouillé)'],
+  ['Ctrl ⇧ ] · Ctrl ⇧ [', 'Premier plan · arrière-plan (déverrouillé)'],
 ]
 
 export function KeyboardHelp() {

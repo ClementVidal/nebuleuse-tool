@@ -1,8 +1,9 @@
 import { Handle, NodeResizer, NodeToolbar, Position, type Node, type NodeProps, type OnResizeEnd } from '@xyflow/react'
-import { ArrowDown, ArrowUp, Bookmark, CornerDownRight, Plus, Settings2, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Bookmark, BringToFront, CornerDownRight, Ellipsis, Plus, SendToBack, Settings2, Trash2 } from 'lucide-react'
 import { memo, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
-import { updateNode } from '@/db/actions'
+import { restack, updateNode } from '@/db/actions'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuShortcut, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { fieldValue, formatFieldValue, isEmptyValue } from '@/db/fields'
 import { colorCss } from '@/db/palette'
 import type { IdeaNode as IdeaNodeModel } from '@/db/types'
@@ -194,6 +195,33 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
               >
                 <Trash2 /> Supprimer
               </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="size-8" aria-label="Plus d’options" title="Plus d’options">
+                    <Ellipsis />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="nodrag nopan w-56" onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      closeMenu()
+                      void restack(model.id, 'front')
+                    }}
+                  >
+                    <BringToFront /> Premier plan
+                    <DropdownMenuShortcut>Ctrl ⇧ ]</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      closeMenu()
+                      void restack(model.id, 'back')
+                    }}
+                  >
+                    <SendToBack /> Arrière-plan
+                    <DropdownMenuShortcut>Ctrl ⇧ [</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           )}
         </div>

@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { createEdge, createNode, deleteEdges, deleteNodes, saveViewport, setBookmarked, updateNodePositions } from '@/db/actions'
+import { createEdge, createNode, deleteEdges, deleteNodes, restack, saveViewport, setBookmarked, updateNodePositions } from '@/db/actions'
 import { DEFAULT_NODE_SIZE } from '@/db/defaults'
 import { colorCss, dimmedColorCss } from '@/db/palette'
 import { record } from '@/db/history'
@@ -141,6 +141,7 @@ export function MapCanvas({
           position: busy ? p.position : { x: model.x, y: model.y },
           width: busy ? p.width : model.width,
           height: busy ? p.height : model.height,
+          zIndex: model.z ?? 0,
           selected: toSelect ? model.id === toSelect : (p?.selected ?? false),
         }
       })
@@ -485,6 +486,12 @@ export function MapCanvas({
         const candidates = selected ? rects.filter((r) => r.id !== selected.id) : rects
         const target = selected ? findNeighbor(from, candidates, direction) : findNeighbor(from, candidates, direction) ?? candidates[0]
         if (target) selectOnly(target.id, { onlyIfNeeded: true })
+        return
+      }
+      // Stacking, as in Excalidraw: Ctrl+Shift+] to the front, Ctrl+Shift+[ to the back.
+      if (mod && event.shiftKey && selected && !locked && (event.code === 'BracketRight' || event.code === 'BracketLeft')) {
+        event.preventDefault()
+        void restack(selected.id, event.code === 'BracketRight' ? 'front' : 'back')
         return
       }
       if (mod || event.altKey) return

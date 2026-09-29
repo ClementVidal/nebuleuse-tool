@@ -133,6 +133,18 @@ export async function updateNode(
   await record(() => db.nodes.update(nodeId, changes), options)
 }
 
+/** Puts a node in front of (or behind) every other node of its map. */
+export async function restack(nodeId: string, where: 'front' | 'back') {
+  await record(async () => {
+    const node = await db.nodes.get(nodeId)
+    if (!node) return
+    const zs = (await db.nodes.where({ mapId: node.mapId }).toArray()).filter((n) => n.id !== nodeId).map((n) => n.z ?? 0)
+    if (zs.length === 0) return
+    const z = where === 'front' ? Math.max(...zs) + 1 : Math.min(...zs) - 1
+    await db.nodes.update(nodeId, { z })
+  })
+}
+
 export async function setBookmarked(nodeId: string, bookmarked: boolean) {
   await updateNode(nodeId, { bookmarkedAt: bookmarked ? Date.now() : undefined })
 }

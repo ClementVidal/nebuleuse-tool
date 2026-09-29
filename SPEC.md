@@ -146,6 +146,8 @@ Déverrouillé :
   - dans le vide : crée une idée reliée à cet endroit (l'éditeur s'ouvre).
 - Clic sur le nom d'un lien (ou sur son point s'il n'a pas de nom) : l'éditer (nom, flèches,
   couleur, épaisseur…).
+- Menu d'une idée → **« … »** : **Premier plan** / **Arrière-plan** (aussi `Ctrl+Maj+]` / `Ctrl+Maj+[`),
+  quand des idées se chevauchent. L'ordre est mémorisé (annulable).
 - Poignées de redimensionnement aux coins et côtés de l'idée sélectionnée (plus grandes au doigt).
 
 ### Clavier
