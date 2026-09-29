@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid'
-import type { IdeaEdge, NodeStyle, NodeTemplate } from './types'
+import type { IdeaEdge, LinkStyle, LinkTemplate, NodeStyle, NodeTemplate } from './types'
 
 export const DEFAULT_NODE_SIZE = { width: 300, height: 200 }
 
@@ -18,6 +18,28 @@ export const DEFAULT_EDGE: Pick<IdeaEdge, 'label' | 'arrows' | 'color' | 'stroke
   strokeWidth: 'medium',
   path: 'curved',
   dash: 'solid',
+}
+
+/** Size of a map card (a node standing for another map). */
+export const MAP_CARD_SIZE = { width: 260, height: 132 }
+
+const linkStyle = (style: Partial<LinkStyle>): LinkStyle => ({
+  arrows: DEFAULT_EDGE.arrows,
+  color: DEFAULT_EDGE.color,
+  strokeWidth: DEFAULT_EDGE.strokeWidth,
+  path: DEFAULT_EDGE.path,
+  dash: DEFAULT_EDGE.dash,
+  ...style,
+})
+
+/** Link templates every new project starts with; the first one is used for new links. */
+export function defaultLinkTemplates(projectId: string): LinkTemplate[] {
+  return [
+    { id: nanoid(), projectId, order: 0, name: 'Lien', label: 'lié à', style: linkStyle({}) },
+    { id: nanoid(), projectId, order: 1, name: 'Cause', label: 'cause', style: linkStyle({ color: 'red', strokeWidth: 'thick' }) },
+    { id: nanoid(), projectId, order: 2, name: 'Opposition', label: 's’oppose à', style: linkStyle({ color: 'violet', dash: 'dashed', arrows: 'both' }) },
+    { id: nanoid(), projectId, order: 3, name: 'Illustration', label: 'illustre', style: linkStyle({ color: 'green', dash: 'dotted' }) },
+  ]
 }
 
 /** Templates every new project starts with. */

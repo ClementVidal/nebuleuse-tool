@@ -12,7 +12,7 @@ import { db } from './db'
  * History is kept in memory, one stack per project.
  */
 
-const TRACKED_TABLES = ['templates', 'maps', 'nodes', 'edges'] as const
+const TRACKED_TABLES = ['templates', 'maps', 'nodes', 'edges', 'linkTemplates'] as const
 type TrackedTable = (typeof TRACKED_TABLES)[number]
 
 type Snapshot = Record<string, unknown> & { projectId?: string }
@@ -144,7 +144,7 @@ export async function record<T>(fn: () => Promise<T>, options: RecordOptions = {
   if (recordingFor(Dexie.currentTransaction)) return fn()
 
   const changes = new Map<string, Change>()
-  const result = await db.transaction('rw', [db.projects, db.templates, db.maps, db.nodes, db.edges], async (tx) => {
+  const result = await db.transaction('rw', [db.projects, db.templates, db.maps, db.nodes, db.edges, db.linkTemplates], async (tx) => {
     recording.set(tx, changes)
     return fn()
   })
@@ -188,7 +188,7 @@ export function patchSnapshots(table: TrackedTable, key: string, patch: Snapshot
 // ---------------------------------------------------------------- undo / redo
 
 async function apply(entry: Entry, side: 'before' | 'after') {
-  await db.transaction('rw', [db.templates, db.maps, db.nodes, db.edges], async () => {
+  await db.transaction('rw', [db.templates, db.maps, db.nodes, db.edges, db.linkTemplates], async () => {
     for (const change of entry.changes.values()) {
       const table = db.table(change.table)
       const value = change[side]

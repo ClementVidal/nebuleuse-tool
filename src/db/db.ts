@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { IdeaEdge, IdeaNode, NodeTemplate, Project, ReflexionMap } from './types'
+import type { IdeaEdge, IdeaNode, LinkTemplate, NodeTemplate, Project, ReflexionMap } from './types'
 
 /** A record changed locally and not yet sent to the server (see src/sync/engine.ts). */
 export interface OutboxEntry {
@@ -22,6 +22,7 @@ export const db = new Dexie('nebuleuse') as Dexie & {
   maps: EntityTable<ReflexionMap, 'id'>
   nodes: EntityTable<IdeaNode, 'id'>
   edges: EntityTable<IdeaEdge, 'id'>
+  linkTemplates: EntityTable<LinkTemplate, 'id'>
   outbox: EntityTable<OutboxEntry, 'key'>
   syncMeta: EntityTable<SyncMeta, 'key'>
 }
@@ -69,6 +70,19 @@ db.version(4).stores({ outbox: 'key', syncMeta: 'key' })
 
 // v5: aliases (a node standing for another one), found by the idea they point to.
 db.version(5).stores({ nodes: 'id, projectId, mapId, templateId, aliasOf' })
+
+// v6: link templates; map cards (a node standing for a map), found by the map they point to.
+// The sync cursor restarts so a device that ran older code gets the link templates it skipped.
+db.version(6)
+  .stores({ linkTemplates: 'id, projectId', nodes: 'id, projectId, mapId, templateId, aliasOf, mapRef' })
+  .upgrade(async (tx) => {
+    await tx
+      .table('syncMeta')
+      .toCollection()
+      .modify((meta: { key: string; value: unknown }) => {
+        if (meta.key.startsWith('cursor:')) meta.value = 0
+      })
+  })
 
 // ---------------------------------------------------------------- connection status
 

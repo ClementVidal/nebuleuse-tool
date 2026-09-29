@@ -28,11 +28,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { createAlias, createEdge, createNode, deleteEdges, deleteNodes, restack, saveViewport, setBookmarked, updateNodePositions } from '@/db/actions'
-import { DEFAULT_NODE_SIZE } from '@/db/defaults'
+import { createAlias, createEdge, createMapRef, createNode, deleteEdges, deleteNodes, restack, saveViewport, setBookmarked, updateNodePositions } from '@/db/actions'
+import { DEFAULT_NODE_SIZE, MAP_CARD_SIZE } from '@/db/defaults'
 import { colorCss, dimmedColorCss } from '@/db/palette'
 import { record } from '@/db/history'
-import { type TimelineEntry, useAliasTargets, useChildMapSizes, useMapEdges, useMapNodes, useReusableNodes, useTimelines } from '@/db/hooks'
+import {
+  type MapCardInfo,
+  type TimelineEntry,
+  useAliasTargets,
+  useChildMapSizes,
+  useLinkTemplateMap,
+  useMapCardTargets,
+  useMapEdges,
+  useMapNodes,
+  useReferenceableMaps,
+  useReusableNodes,
+  useTimelines,
+} from '@/db/hooks'
 import type { IdeaNode, NodeTemplate, ReflexionMap } from '@/db/types'
 import { cn } from '@/lib/utils'
 import { AddIdeaMenu } from './add-idea-menu'
@@ -66,6 +78,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 const EMPTY_TIMELINES = new Map<string, TimelineEntry[]>()
 const EMPTY_TARGETS = new Map<string, IdeaNode>()
+const EMPTY_CARDS = new Map<string, MapCardInfo>()
 
 interface MapCanvasProps {
   map: ReflexionMap
@@ -75,6 +88,8 @@ interface MapCanvasProps {
   /** Node to select when the map opens (e.g. the node we just came back from). */
   focusNodeId: string | undefined
   onOpenNode: (nodeId: string) => void
+  /** Go to another map (a map card was opened). */
+  onOpenMap: (mapId: string) => void
   onNavigateUp: (() => void) | undefined
   /** An idea was created with this template (remembered for Tab). */
   onTemplateUsed: (templateId: string) => void
@@ -93,6 +108,7 @@ export function MapCanvas({
   activeTemplateId,
   focusNodeId,
   onOpenNode,
+  onOpenMap,
   onNavigateUp,
   onTemplateUsed,
   onFocusConsumed,
@@ -104,6 +120,9 @@ export function MapCanvas({
   const dbEdges = useMapEdges(map.id)
   const aliasTargets = useAliasTargets(dbNodes)
   const reusable = useReusableNodes(map.projectId)
+  const referenceableMaps = useReferenceableMaps(map.projectId)
+  const mapCards = useMapCardTargets(dbNodes)
+  const linkTemplates = useLinkTemplateMap(map.projectId)
   // Child map sizes of the ideas shown here, originals of aliases included (for the depth arrows).
   const shownIdeas = useMemo(() => [...(dbNodes ?? []), ...(aliasTargets?.values() ?? [])], [dbNodes, aliasTargets])
   const childMapSizes = useChildMapSizes(shownIdeas)
@@ -304,7 +323,26 @@ export function MapCanvas({
     },
     [dbNodes, aliasTargets],
   )
-  const exploreNode = useCallback((nodeId: string) => onOpenNode(contentId(nodeId)), [onOpenNode, contentId])
+  /** Title shown for a node: its own, its original's (alias) or its map's (map card). */
+  const titleOf = useCallback(
+    (nodeId: string) => {
+      const node = dbNodes?.find((n) => n.id === nodeId)
+      if (node?.mapRef) return mapCards?.get(node.mapRef)?.name
+      return contentOf(nodeId)?.title
+    },
+    [dbNodes, mapCards, contentOf],
+  )
+  /** The map a map card stands for (undefined for an idea). */
+  const mapRefOf = useCallback((nodeId: string) => dbNodes?.find((n) => n.id === nodeId)?.mapRef, [dbNodes])
+  /** Enter a node: an idea's own map, or the map a card stands for. */
+  const exploreNode = useCallback(
+    (nodeId: string) => {
+      const mapRef = mapRefOf(nodeId)
+      if (mapRef) onOpenMap(mapRef)
+      else onOpenNode(contentId(nodeId))
+    },
+    [onOpenNode, onOpenMap, contentId, mapRefOf],
+  )
 
   const openAddMenu = useCallback(
     (clientX: number, clientY: number) => {
@@ -332,6 +370,21 @@ export function MapCanvas({
       setAddMenu(undefined)
       const alias = await createAlias({ mapId: map.id, targetId, x: addMenu.flow.x - DEFAULT_NODE_SIZE.width / 2, y: addMenu.flow.y - 40 })
       if (alias) pendingSelection.current = alias.id
+    },
+    [addMenu, map.id],
+  )
+
+  const mapCardFromMenu = useCallback(
+    async (targetMapId: string) => {
+      if (!addMenu) return
+      setAddMenu(undefined)
+      const card = await createMapRef({
+        mapId: map.id,
+        targetMapId,
+        x: addMenu.flow.x - MAP_CARD_SIZE.width / 2,
+        y: addMenu.flow.y - 40,
+      })
+      if (card) pendingSelection.current = card.id
     },
     [addMenu, map.id],
   )
@@ -475,9 +528,12 @@ export function MapCanvas({
   const openDocument = useCallback(
     (nodeId: string) => {
       setMenuNodeId(undefined)
-      setDoc({ id: contentId(nodeId), mode: locked ? 'read' : 'edit' })
+      // A map card has no page: it opens its map.
+      const mapRef = mapRefOf(nodeId)
+      if (mapRef) onOpenMap(mapRef)
+      else setDoc({ id: contentId(nodeId), mode: locked ? 'read' : 'edit' })
     },
-    [locked, contentId],
+    [locked, contentId, mapRefOf, onOpenMap],
   )
 
   const requestDelete = useCallback(
@@ -585,7 +641,7 @@ export function MapCanvas({
           if (selected) {
             event.preventDefault()
             const content = contentOf(selected.id)
-            if (content) void setBookmarked(content.id, !content.bookmarkedAt)
+            if (content && !content.mapRef) void setBookmarked(content.id, !content.bookmarkedAt)
           }
           break
         case 'n': {
@@ -613,6 +669,9 @@ export function MapCanvas({
   const actions: MapActions = useMemo(
     () => ({
       templates: templatesById,
+      linkTemplates,
+      mapCards: mapCards ?? EMPTY_CARDS,
+      openMap: onOpenMap,
       timelines: timelines ?? EMPTY_TIMELINES,
       openNode: onOpenNode,
       openSettings: setSettingsNodeId,
@@ -626,7 +685,7 @@ export function MapCanvas({
       followEdge,
       editEdge: (edgeId: string) => (locked ? followEdge(edgeId) : selectEdge(edgeId)),
     }),
-    [templatesById, timelines, aliasTargets, onOpenNode, requestDelete, onNavigateUp, childMapSizes, menuNodeId, locked, followEdge, selectEdge],
+    [templatesById, linkTemplates, mapCards, onOpenMap, timelines, aliasTargets, onOpenNode, requestDelete, onNavigateUp, childMapSizes, menuNodeId, locked, followEdge, selectEdge],
   )
   const selectedEdges = edges.filter((e) => e.selected)
   const selectedEdge =
@@ -694,6 +753,11 @@ export function MapCanvas({
             if (lastPointerType.current !== 'touch') openDocument(node.id)
           }}
           onNodeClick={(event, node) => {
+            // Locked, a map card opens its map at once.
+            if (locked && node.data.model.mapRef && !event.shiftKey) {
+              onOpenMap(node.data.model.mapRef)
+              return
+            }
             // A plain click opens the node menu and brings the node into view.
             if (!event.shiftKey && !event.metaKey && !event.ctrlKey) {
               setMenuNodeId(node.id)
@@ -739,8 +803,9 @@ export function MapCanvas({
             <Panel position="top-right">
               <EdgePanel
                 edge={selectedEdge}
-                sourceTitle={contentOf(selectedEdge.source)?.title}
-                targetTitle={contentOf(selectedEdge.target)?.title}
+                sourceTitle={titleOf(selectedEdge.source)}
+                targetTitle={titleOf(selectedEdge.target)}
+                linkTemplates={linkTemplates}
                 autoFocusLabel={selectedEdge.id === freshEdgeId}
               />
             </Panel>
@@ -766,8 +831,10 @@ export function MapCanvas({
             bounds={addMenu.bounds}
             templates={templates}
             reusable={reusable ?? []}
+            maps={(referenceableMaps ?? []).filter((m) => m.map.id !== map.id)}
             onCreate={createFromMenu}
             onAlias={(id) => void aliasFromMenu(id)}
+            onMapCard={(id) => void mapCardFromMenu(id)}
             onClose={() => setAddMenu(undefined)}
           />
         )}

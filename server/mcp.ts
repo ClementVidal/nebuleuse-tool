@@ -1,5 +1,6 @@
 import {
   buildMap,
+  createLinkTemplate,
   createProject,
   createTemplate,
   DomainError,
@@ -9,11 +10,13 @@ import {
   listTemplates,
   search,
   Store,
+  updateLinkTemplate,
   updateMap,
   updateTemplate,
   type BuildTarget,
   type FieldInput,
   type FieldOperation,
+  type LinkStyleInput,
   type MapInput,
   type Operation,
 } from './domain.js'
@@ -46,6 +49,11 @@ Méthode :
 - Si aucun template ne convient (ex. une frise historique : Événement avec une période, Personnage avec
   naissance et mort), crée-le avec create_template, ou adapte-en un avec update_template, avant build_map.
   Les dates et périodes qui partagent un nom de frise ("timeline") s'affichent ensemble sur une frise.
+- Les liens ont un type (list_templates → linkTemplates : Lien, Cause, Opposition…) qui donne leur
+  style et leur nom par défaut ; précise "type" sur un lien quand la relation s'y prête. Crée ou adapte
+  des types avec create_link_template / update_link_template.
+- Une carte « référençable » peut être placée sur une autre carte du projet sous forme de carte
+  cliquable (update_map : set_referenceable, add_map_card), reliée aux idées par des liens.
 - Écris dans la langue de l'utilisateur (français par défaut).`
 
 type Json = Record<string, unknown>
@@ -90,8 +98,9 @@ const mapSchema: Json = {
         properties: {
           from: { type: 'string' },
           to: { type: 'string' },
-          label: { type: 'string', description: 'Nom de la relation (défaut « lié à »).' },
-          arrows: { type: 'string', enum: ['none', 'start', 'end', 'both'] },
+          label: { type: 'string', description: 'Nom de la relation (défaut : celui du type).' },
+          type: { type: 'string', description: 'Type de lien (voir list_templates → linkTemplates). Défaut : le premier type.' },
+          arrows: { type: 'string', enum: ['none', 'start', 'end', 'both'], description: 'Défaut : celles du type.' },
         },
         required: ['from', 'to'],
       },
@@ -114,6 +123,16 @@ const fieldOptions: Json = {
   readOnly: { type: 'boolean', description: 'Toutes les idées ont la valeur par défaut, non modifiable.' },
   default: { description: 'Valeur par défaut (même format que les champs des idées ; null pour l’enlever).' },
   timeline: { type: 'string', description: 'Dates et périodes seulement : nom de frise ; celles qui le partagent s’affichent ensemble ("" pour l’enlever).' },
+}
+
+const linkStyleProperties: Json = {
+  label: { type: 'string', description: 'Nom donné aux liens de ce type (ex. « cause », « s’oppose à »).' },
+  arrows: { type: 'string', enum: ['none', 'start', 'end', 'both'] },
+  color: { type: 'string', enum: ['ink', 'red', 'green', 'blue', 'orange', 'violet'] },
+  strokeWidth: { type: 'string', enum: ['thin', 'medium', 'thick'] },
+  path: { type: 'string', enum: ['straight', 'curved'] },
+  dash: { type: 'string', enum: ['solid', 'dashed', 'dotted'] },
+  first: { type: 'boolean', description: 'En faire le premier type : celui donné par défaut aux nouveaux liens.' },
 }
 
 const TOOLS: Tool[] = [
@@ -153,7 +172,8 @@ const TOOLS: Tool[] = [
   {
     name: 'list_templates',
     title: 'Templates d’un projet',
-    description: 'Les templates d’un projet et leurs champs (nom, type : richtext, number, date, daterange ; frise éventuelle).',
+    description:
+      'Les templates d’un projet : ideaTemplates (templates d’idées et leurs champs : richtext, number, date, daterange ; frise éventuelle) et linkTemplates (types de liens : nom, nom donné aux liens, style).',
     inputSchema: { type: 'object', properties: { projectId: { type: 'string' } }, required: ['projectId'] },
     annotations: { readOnlyHint: true },
     run: (store, a) => listTemplates(store, String(a.projectId)),
@@ -235,6 +255,42 @@ Options : description, visibleOnNode, readOnly, default, timeline. Les champs so
     },
   },
   {
+    name: 'create_link_template',
+    title: 'Créer un type de lien',
+    description: 'Crée un type de lien dans un projet : nom, nom donné aux liens, style (flèches, couleur, épaisseur, tracé, trait). Ses liens partagent son style.',
+    inputSchema: {
+      type: 'object',
+      properties: { projectId: { type: 'string' }, name: { type: 'string', description: 'Nom unique dans le projet.' }, ...linkStyleProperties },
+      required: ['projectId', 'name'],
+    },
+    run: async (store, a) => {
+      const r = await createLinkTemplate(store, String(a.projectId), a as unknown as { name: string } & LinkStyleInput)
+      await store.commit()
+      return r
+    },
+  },
+  {
+    name: 'update_link_template',
+    title: 'Modifier un type de lien',
+    description: 'Modifie un type de lien (désigné par son nom) : nom ("rename"), nom donné aux liens, style. Le style change sur tous les liens de ce type ; leurs noms déjà donnés restent.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        template: { type: 'string', description: 'Nom actuel du type de lien.' },
+        rename: { type: 'string' },
+        ...linkStyleProperties,
+      },
+      required: ['projectId', 'template'],
+    },
+    annotations: { destructiveHint: true },
+    run: async (store, a) => {
+      const r = await updateLinkTemplate(store, String(a.projectId), a as unknown as { template: string } & LinkStyleInput)
+      await store.commit()
+      return r
+    },
+  },
+  {
     name: 'build_map',
     title: 'Construire une carte',
     description: `Ajoute des idées et leurs liens à une carte, en un seul appel, avec éventuellement leurs sous-cartes (champ "children", sur plusieurs niveaux). Placement automatique.
@@ -263,10 +319,12 @@ Retourne les ids créés (par clé) pour les réutiliser.`,
     name: 'update_map',
     title: 'Modifier une carte',
     description: `Modifie une carte par une liste d’opérations, appliquées ensemble (toutes ou aucune) :
-- { "op": "update_idea", "id", "title"?, "text"?, "fields"?, "status"?, "template"? }
+- { "op": "update_idea", "id", "title"?, "text"?, "fields"?, "status"?, "template"?, "referenceable"? } (référençable : l'idée est proposée en alias sur les autres cartes)
 - { "op": "delete_idea", "id" } (supprime aussi sa sous-carte)
-- { "op": "add_link", "from", "to", "label"?, "arrows"? }
-- { "op": "update_link", "id", "label"?, "arrows"? }
+- { "op": "add_link", "from", "to", "label"?, "type"?, "arrows"? }
+- { "op": "update_link", "id", "label"?, "type"?, "arrows"? }
+- { "op": "set_referenceable", "value" } (cette carte : peut être placée sur les autres cartes du projet)
+- { "op": "add_map_card", "map" } (place sur cette carte une carte cliquable vers une autre carte, qui doit être référençable ; relie-la ensuite avec add_link)
 - { "op": "delete_link", "id" }
 Pour ajouter des idées, utilise build_map avec ce mapId.`,
     inputSchema: {

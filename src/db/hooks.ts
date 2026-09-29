@@ -1,10 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useSyncExternalStore } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
 import { db } from './db'
 import { canRedo, canUndo, historyVersion, subscribeHistory } from './history'
 import { fieldValue, isDateRange, isTimelineField } from './fields'
 import type { PaletteColor } from './palette'
-import type { IdeaNode, Project } from './types'
+import type { IdeaNode, LinkTemplate, Project, ReflexionMap } from './types'
 
 export function useProjects() {
   return useLiveQuery(() => db.projects.orderBy('updatedAt').reverse().toArray(), [])
@@ -17,6 +17,16 @@ export function useProject(projectId: string) {
 
 export function useTemplates(projectId: string) {
   return useLiveQuery(() => db.templates.where({ projectId }).sortBy('order'), [projectId])
+}
+
+export function useLinkTemplates(projectId: string) {
+  return useLiveQuery(() => db.linkTemplates.where({ projectId }).sortBy('order'), [projectId])
+}
+
+/** Link templates of a project by id (empty while loading). */
+export function useLinkTemplateMap(projectId: string): Map<string, LinkTemplate> {
+  const templates = useLinkTemplates(projectId)
+  return useMemo(() => new Map((templates ?? []).map((t) => [t.id, t])), [templates])
 }
 
 /** `undefined` while loading, `null` if the map doesn't exist. */
@@ -80,7 +90,7 @@ export function useProjectNodes(project: Project | null | undefined, enabled: bo
     const titles = new Map(nodes.map((n) => [n.id, n.title]))
     const mapOwner = new Map(maps.map((m) => [m.id, m.parentNodeId]))
     // Aliases hold no content of their own: search finds their original.
-    return nodes.filter((node) => !node.aliasOf).map((node) => {
+    return nodes.filter((node) => !node.aliasOf && !node.mapRef).map((node) => {
       const owner = mapOwner.get(node.mapId)
       return { node, location: owner ? (titles.get(owner) ?? '…') : project.name }
     })
@@ -189,7 +199,7 @@ export interface ReusableNode {
   location: string
 }
 
-/** Ideas of a project that can be placed as aliases (the "Réutilisable ailleurs" setting). */
+/** Ideas of a project that can be placed as aliases (the « Référençable » setting). */
 export function useReusableNodes(projectId: string) {
   return useLiveQuery(async (): Promise<ReusableNode[]> => {
     const nodes = (await db.nodes.where({ projectId }).toArray()).filter((n) => n.reusable && !n.aliasOf)
@@ -204,6 +214,63 @@ export function useReusableNodes(projectId: string) {
       })
       .sort((a, b) => a.node.title.localeCompare(b.node.title, 'fr'))
   }, [projectId])
+}
+
+export interface MapCardInfo {
+  map: ReflexionMap
+  /** Owner idea title, or project name for the root map. */
+  name: string
+  /** Where the map lives: the label of the map holding its owner idea (empty for the root map). */
+  location: string
+  /** Number of ideas on the map. */
+  size: number
+  /** Titles of its first ideas, top to bottom. */
+  titles: string[]
+}
+
+async function mapCardInfos(maps: ReflexionMap[]): Promise<MapCardInfo[]> {
+  if (maps.length === 0) return []
+  const project = await db.projects.get(maps[0].projectId)
+  const owners = await db.nodes.bulkGet(maps.map((m) => m.parentNodeId ?? ''))
+  const ownerMaps = await db.maps.bulkGet(owners.map((o) => o?.mapId ?? ''))
+  const grandOwners = await db.nodes.bulkGet(ownerMaps.map((m) => m?.parentNodeId ?? ''))
+  const content = await db.nodes.where('mapId').anyOf(maps.map((m) => m.id)).toArray()
+  const aliasTitles = new Map(
+    (await db.nodes.bulkGet(content.flatMap((n) => (n.aliasOf ? [n.aliasOf] : [])))).flatMap((n) => (n ? [[n.id, n.title]] : [])),
+  )
+  return maps.map((map, i) => {
+    const ideas = content.filter((n) => n.mapId === map.id && !n.mapRef).sort((a, b) => a.y - b.y || a.x - b.x)
+    return {
+      map,
+      name: map.parentNodeId ? (owners[i]?.title ?? '…') || 'Sans titre' : (project?.name ?? ''),
+      location: map.parentNodeId ? (grandOwners[i]?.title ?? project?.name ?? '') : '',
+      size: ideas.length,
+      titles: ideas.slice(0, 4).map((n) => (n.aliasOf ? aliasTitles.get(n.aliasOf) : n.title) || 'Sans titre'),
+    }
+  })
+}
+
+/** Maps of a project that can be placed as cards (the « Référençable » map setting). */
+export function useReferenceableMaps(projectId: string) {
+  return useLiveQuery(async () => {
+    const maps = (await db.maps.where({ projectId }).toArray()).filter((m) => m.reusable)
+    return (await mapCardInfos(maps)).sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+  }, [projectId])
+}
+
+/** The maps the cards among `nodes` stand for, by map id. */
+export function useMapCardTargets(nodes: IdeaNode[] | undefined) {
+  const ids = [...new Set((nodes ?? []).flatMap((n) => (n.mapRef ? [n.mapRef] : [])))]
+  const key = ids.join(',')
+  return useLiveQuery(async () => {
+    const maps = (await db.maps.bulkGet(ids)).filter((m): m is ReflexionMap => !!m)
+    return new Map((await mapCardInfos(maps)).map((info) => [info.map.id, info]))
+  }, [key])
+}
+
+/** Number of cards standing for a map. */
+export function useMapCardCount(mapId: string) {
+  return useLiveQuery(() => db.nodes.where('mapRef').equals(mapId).count(), [mapId])
 }
 
 /** Number of aliases of an idea. */

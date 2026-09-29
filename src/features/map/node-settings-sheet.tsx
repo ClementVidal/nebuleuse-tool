@@ -149,7 +149,7 @@ function Settings({ node, templates }: { node: IdeaNode; templates: NodeTemplate
   )
 }
 
-/** « Réutilisable ailleurs »: the idea can be placed as an alias on other maps, from the add menu. */
+/** « Référençable »: the idea can be placed as an alias on other maps, from the add menu. */
 function ReusableSetting({ node }: { node: IdeaNode }) {
   const aliases = useAliasCount(node.id) ?? 0
   const id = `reusable-${node.id}`
@@ -157,7 +157,7 @@ function ReusableSetting({ node }: { node: IdeaNode }) {
     <div className="flex items-start gap-3">
       <Switch id={id} checked={!!node.reusable} onCheckedChange={(v) => updateNode(node.id, { reusable: v || undefined })} className="mt-0.5" />
       <label htmlFor={id} className="grid gap-0.5 text-sm">
-        <span className="font-medium">Réutilisable ailleurs</span>
+        <span className="font-medium">Référençable</span>
         <span className="text-xs text-muted-foreground">
           Proposée dans le menu d’ajout de toutes les cartes du projet, sous forme d’alias. Modifier l’idée modifie tous ses alias.
         </span>

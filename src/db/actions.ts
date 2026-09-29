@@ -1,11 +1,11 @@
 import { nanoid } from 'nanoid'
 import { defaultValues } from './fields'
 import { db } from './db'
-import { DEFAULT_EDGE, DEFAULT_NODE_SIZE, DEFAULT_NODE_STYLE, defaultTemplates } from './defaults'
+import { DEFAULT_EDGE, DEFAULT_NODE_SIZE, DEFAULT_NODE_STYLE, defaultLinkTemplates, defaultTemplates, MAP_CARD_SIZE } from './defaults'
 import { patchSnapshots, record, type RecordOptions } from './history'
-import type { FieldValue, IdeaEdge, IdeaNode, NodeTemplate, Project, ReflexionMap } from './types'
+import type { FieldValue, IdeaEdge, IdeaNode, LinkStyle, LinkTemplate, NodeTemplate, Project, ReflexionMap } from './types'
 
-const ALL_TABLES = [db.projects, db.templates, db.maps, db.nodes, db.edges]
+const ALL_TABLES = [db.projects, db.templates, db.maps, db.nodes, db.edges, db.linkTemplates]
 
 // Actions that change a project's content go through `record()` so they can be undone.
 // Project-level actions (create / rename / delete a project) and view state are not recorded.
@@ -25,6 +25,7 @@ export async function createProject(name: string): Promise<Project> {
     await db.projects.add(project)
     await db.maps.add(rootMap)
     await db.templates.bulkAdd(defaultTemplates(projectId))
+    await db.linkTemplates.bulkAdd(defaultLinkTemplates(projectId))
   })
   return project
 }
@@ -39,6 +40,7 @@ export async function deleteProject(projectId: string) {
     await db.nodes.where({ projectId }).delete()
     await db.maps.where({ projectId }).delete()
     await db.templates.where({ projectId }).delete()
+    await db.linkTemplates.where({ projectId }).delete()
     await db.projects.delete(projectId)
   })
 }
@@ -80,7 +82,81 @@ export async function deleteTemplate(templateId: string): Promise<boolean> {
   })
 }
 
+// ---------------------------------------------------------------- link templates
+
+export async function createLinkTemplate(projectId: string, name: string): Promise<LinkTemplate> {
+  const last = await db.linkTemplates.where({ projectId }).sortBy('order')
+  const template: LinkTemplate = {
+    id: nanoid(),
+    projectId,
+    name,
+    order: (last.at(-1)?.order ?? -1) + 1,
+    label: name.toLowerCase(),
+    style: { arrows: DEFAULT_EDGE.arrows, color: DEFAULT_EDGE.color, strokeWidth: DEFAULT_EDGE.strokeWidth, path: DEFAULT_EDGE.path, dash: DEFAULT_EDGE.dash },
+  }
+  await record(() => db.linkTemplates.add(template))
+  return template
+}
+
+/** For projects created before link templates existed. */
+export async function addDefaultLinkTemplates(projectId: string) {
+  await record(() => db.linkTemplates.bulkAdd(defaultLinkTemplates(projectId)))
+}
+
+export async function updateLinkTemplate(
+  templateId: string,
+  changes: Partial<Omit<LinkTemplate, 'id' | 'projectId'>>,
+  options?: RecordOptions,
+) {
+  await record(() => db.linkTemplates.update(templateId, changes), options)
+}
+
+export function countLinkTemplateUsage(templateId: string) {
+  return db.edges.filter((e) => e.templateId === templateId).count()
+}
+
+/** Deletes a link template; its links keep their look (the template's style is copied onto them). */
+export async function deleteLinkTemplate(templateId: string) {
+  await record(async () => {
+    const template = await db.linkTemplates.get(templateId)
+    if (!template) return
+    await db.edges
+      .where({ projectId: template.projectId })
+      .filter((e) => e.templateId === templateId)
+      .modify((edge: IdeaEdge) => {
+        Object.assign(edge, template.style)
+        delete edge.templateId
+      })
+    await db.linkTemplates.delete(templateId)
+  })
+}
+
 // ---------------------------------------------------------------- maps
+
+export async function setMapReusable(mapId: string, reusable: boolean) {
+  await record(() => db.maps.update(mapId, { reusable: reusable || undefined }))
+}
+
+/** Places a card standing for another map of the project (a « référençable » one). */
+export async function createMapRef(input: { mapId: string; targetMapId: string; x: number; y: number }): Promise<IdeaNode | undefined> {
+  const target = await db.maps.get(input.targetMapId)
+  if (!target) return undefined
+  const card: IdeaNode = {
+    id: nanoid(),
+    projectId: target.projectId,
+    mapId: input.mapId,
+    templateId: '',
+    title: '',
+    values: {},
+    x: input.x,
+    y: input.y,
+    ...MAP_CARD_SIZE,
+    childMapId: null,
+    mapRef: target.id,
+  }
+  await record(() => db.nodes.add(card))
+  return card
+}
 
 export async function saveViewport(mapId: string, viewport: ReflexionMap['viewport']) {
   await db.maps.update(mapId, { viewport })
@@ -196,6 +272,8 @@ export async function deleteNodes(nodeIds: string[]) {
       await db.nodes.bulkDelete(queue)
       await db.maps.bulkDelete(childMapIds)
       queue = childMapIds.length ? await db.nodes.where('mapId').anyOf(childMapIds).primaryKeys() : []
+      // Cards standing for a deleted map go with it.
+      if (childMapIds.length) queue.push(...(await db.nodes.where('mapRef').anyOf(childMapIds).primaryKeys()))
       if (queue.length) queue.push(...(await db.nodes.where('aliasOf').anyOf(queue).primaryKeys()))
       if (childMapIds.length) await db.edges.where('mapId').anyOf(childMapIds).delete()
     }
@@ -207,9 +285,27 @@ export async function deleteNodes(nodeIds: string[]) {
 export async function createEdge(
   input: Pick<IdeaEdge, 'projectId' | 'mapId' | 'source' | 'target'>,
 ): Promise<IdeaEdge> {
-  const edge: IdeaEdge = { id: nanoid(), ...DEFAULT_EDGE, ...input }
+  // New links get the project's first link template (its label and look), if any.
+  const [template] = await db.linkTemplates.where({ projectId: input.projectId }).sortBy('order')
+  const edge: IdeaEdge = { id: nanoid(), ...DEFAULT_EDGE, ...(template && { ...template.style, label: template.label, templateId: template.id }), ...input }
   await record(() => db.edges.add(edge))
   return edge
+}
+
+/** Gives a link a template (or none: it keeps the template's look as its own). */
+export async function setEdgeTemplate(edge: IdeaEdge, template: LinkTemplate | undefined, previous: LinkTemplate | undefined) {
+  // The label follows the template unless it was renamed by hand.
+  const labelIsDefault = !edge.label || edge.label === (previous?.label ?? DEFAULT_EDGE.label)
+  const changes: Partial<IdeaEdge> = template
+    ? { ...template.style, templateId: template.id, ...(labelIsDefault && { label: template.label }) }
+    : { ...(previous?.style ?? {}), templateId: undefined }
+  await updateEdge(edge.id, changes)
+}
+
+/** The look of a link: its template's when it has one, else its own. */
+export function linkStyleOf(edge: IdeaEdge, templates: Map<string, LinkTemplate>): LinkStyle {
+  const template = edge.templateId ? templates.get(edge.templateId) : undefined
+  return template?.style ?? { arrows: edge.arrows, color: edge.color, strokeWidth: edge.strokeWidth, path: edge.path, dash: edge.dash }
 }
 
 export async function updateEdge(

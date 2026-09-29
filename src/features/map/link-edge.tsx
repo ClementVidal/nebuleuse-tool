@@ -1,5 +1,6 @@
 import { EdgeLabelRenderer, useInternalNode, type Edge, type EdgeProps, type InternalNode } from '@xyflow/react'
 import { memo, useMemo } from 'react'
+import { linkStyleOf } from '@/db/actions'
 import { colorCss, STROKE_WIDTHS } from '@/db/palette'
 import type { EdgeDash, IdeaEdge } from '@/db/types'
 import { cn } from '@/lib/utils'
@@ -29,10 +30,12 @@ function arrowhead(tip: Point, dir: Point, size: number): string {
 }
 
 function LinkEdgeView({ id, source, target, data, selected }: EdgeProps<LinkFlowEdge>) {
-  const { locked, editEdge, followEdge } = useMapActions()
+  const { locked, editEdge, followEdge, linkTemplates } = useMapActions()
   const sourceNode = useInternalNode(source)
   const targetNode = useInternalNode(target)
-  const model = data?.model
+  const edge = data?.model
+  // The look comes from the link's template when it has one.
+  const model = useMemo(() => (edge ? { ...edge, ...linkStyleOf(edge, linkTemplates) } : undefined), [edge, linkTemplates])
 
   const shape = useMemo(() => {
     if (!sourceNode || !targetNode || !model) return null

@@ -9,7 +9,7 @@ const SHORTCUTS: [string, string][] = [
   ['L', 'Verrouiller (lecture) / déverrouiller (édition)'],
   ['← ↑ → ↓', 'Sélectionner le nœud voisin'],
   ['Espace · E', 'Lire (verrouillé) · éditer (déverrouillé)'],
-  ['Entrée', "Explorer l'idée sélectionnée"],
+  ['Entrée', "Explorer l'idée · ouvrir la carte sélectionnée"],
   ['Échap · Alt+↑', 'Remonter à la carte parente'],
   ['F', 'Centrer la vue sur la sélection'],
   ['B', 'Ajouter / retirer la sélection des favoris'],

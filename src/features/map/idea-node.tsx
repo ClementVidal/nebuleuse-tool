@@ -13,6 +13,7 @@ import { markdownToHtml } from './markdown'
 import { StatusDot } from './status'
 import { useGoToNode } from './use-go-to-node'
 import { IdeaTimelines } from './timeline'
+import { MapCardView } from './map-card-node'
 import { nodeBoxClass, nodeBoxStyle, templateStyle } from './node-style'
 
 export type IdeaFlowNode = Node<{ model: IdeaNodeModel }, 'idea'>
@@ -265,4 +266,9 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
   )
 }
 
-export const IdeaNodeComponent = memo(IdeaNodeView)
+/** An idea, or a card standing for another map. */
+function NodeView(props: NodeProps<IdeaFlowNode>) {
+  return props.data.model.mapRef ? <MapCardView {...props} /> : <IdeaNodeView {...props} />
+}
+
+export const IdeaNodeComponent = memo(NodeView)

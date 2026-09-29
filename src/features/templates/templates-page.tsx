@@ -11,24 +11,28 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { createTemplate, countTemplateUsage, deleteTemplate, updateTemplate } from '@/db/actions'
-import { useProject, useTemplates } from '@/db/hooks'
+import { addDefaultLinkTemplates, createLinkTemplate, createTemplate, countTemplateUsage, deleteTemplate, updateTemplate } from '@/db/actions'
+import { useLinkTemplates, useProject, useTemplates } from '@/db/hooks'
 import { colorCss, COLORS } from '@/db/palette'
 import type { NodeStyle, NodeTemplate, TemplateField } from '@/db/types'
 import { nodeBoxClass, nodeBoxStyle, templateStyle } from '@/features/map/node-style'
 import { FieldEditor } from './field-editor'
+import { LinkTemplateEditor } from './link-template-editor'
 import { cn } from '@/lib/utils'
 
 
 export function TemplatesPage({ projectId }: { projectId: string }) {
   const project = useProject(projectId)
   const templates = useTemplates(projectId)
+  const linkTemplates = useLinkTemplates(projectId)
   const [chosenId, setSelectedId] = useState<string>()
-  const selectedId = templates?.some((t) => t.id === chosenId) ? chosenId : templates?.[0]?.id
+  const selectedId =
+    templates?.some((t) => t.id === chosenId) || linkTemplates?.some((t) => t.id === chosenId) ? chosenId : templates?.[0]?.id
 
   if (project === null) return <Navigate to="/" />
-  if (!project || !templates) return null
+  if (!project || !templates || !linkTemplates) return null
   const selected = templates.find((t) => t.id === selectedId)
+  const selectedLink = linkTemplates.find((t) => t.id === selectedId)
 
   return (
     <div className="min-h-dvh">
@@ -45,6 +49,7 @@ export function TemplatesPage({ projectId }: { projectId: string }) {
 
       <main className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)] gap-6 px-4 py-6 md:grid-cols-[14rem_minmax(0,1fr)]">
         <nav className="flex flex-wrap content-start gap-1 md:grid">
+          <div className="w-full px-3 pt-1 pb-0.5 text-xs font-medium text-muted-foreground">Idées</div>
           {templates.map((t) => (
             <button
               key={t.id}
@@ -67,9 +72,42 @@ export function TemplatesPage({ projectId }: { projectId: string }) {
           >
             <Plus /> Ajouter un template
           </Button>
+
+          <div className="w-full px-3 pt-5 pb-0.5 text-xs font-medium text-muted-foreground">Liens</div>
+          {linkTemplates.length === 0 && (
+            <div className="grid w-full gap-2 px-3 pb-1 text-xs text-muted-foreground">
+              <p>Aucun type de lien : les liens ont chacun leur style.</p>
+              <Button variant="secondary" size="sm" className="justify-self-start" onClick={() => void addDefaultLinkTemplates(projectId)}>
+                Ajouter les types par défaut
+              </Button>
+            </div>
+          )}
+          {linkTemplates.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setSelectedId(t.id)}
+              className={cn(
+                'flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-accent',
+                t.id === selectedId && 'bg-accent font-medium',
+              )}
+            >
+              <span className="h-0.5 w-3 rounded-full" style={{ background: colorCss(t.style.color) }} />
+              {t.name}
+            </button>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            className="md:mt-2"
+            onClick={async () => setSelectedId((await createLinkTemplate(projectId, 'Nouveau lien')).id)}
+          >
+            <Plus /> Ajouter un type de lien
+          </Button>
         </nav>
 
         {selected && <TemplateEditor key={selected.id} template={selected} timelineNames={timelineNames(templates)} />}
+        {selectedLink && <LinkTemplateEditor key={selectedLink.id} template={selectedLink} />}
       </main>
     </div>
   )

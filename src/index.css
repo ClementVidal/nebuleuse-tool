@@ -150,6 +150,16 @@
 }
 .react-flow__controls-button { border-bottom-color: var(--border); }
 
+/* Map card: a paper card with sheets stacked behind (see map-card-node.tsx). */
+.map-card,
+.map-card-sheet {
+  background: var(--card);
+  border: 1px solid var(--node-border);
+  box-shadow: var(--node-card-shadow);
+}
+.map-card { border-top: 3px solid color-mix(in oklab, var(--foreground) 55%, transparent); }
+.react-flow__node-idea:hover .map-card { box-shadow: 0 6px 18px rgb(0 0 0 / 0.1); }
+
 .react-flow__node-idea {
   padding: 0;
   border: none;

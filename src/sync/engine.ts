@@ -14,7 +14,7 @@ import { getAccount, getToken, refreshAccount, subscribeAccount } from './auth'
  * The first sync of an account on a device uploads everything already stored locally.
  */
 
-const SYNC_TABLES = ['projects', 'templates', 'maps', 'nodes', 'edges'] as const
+const SYNC_TABLES = ['projects', 'templates', 'maps', 'nodes', 'edges', 'linkTemplates'] as const
 type SyncTable = (typeof SYNC_TABLES)[number]
 
 const POLL_MS = 10_000

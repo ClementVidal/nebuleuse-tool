@@ -1,7 +1,7 @@
-import { CornerDownLeft, Link2, Plus } from 'lucide-react'
+import { CornerDownLeft, Link2, Map as MapIcon, Plus } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import type { ReusableNode } from '@/db/hooks'
+import type { MapCardInfo, ReusableNode } from '@/db/hooks'
 import { colorCss } from '@/db/palette'
 import type { NodeTemplate } from '@/db/types'
 import { templateStyle } from './node-style'
@@ -13,8 +13,11 @@ interface AddIdeaMenuProps {
   bounds: { width: number; height: number }
   templates: NodeTemplate[]
   reusable: ReusableNode[]
+  /** « Référençable » maps (not this one), placed as map cards. */
+  maps: MapCardInfo[]
   onCreate: (templateId: string) => void
   onAlias: (nodeId: string) => void
+  onMapCard: (mapId: string) => void
   onClose: () => void
 }
 
@@ -23,9 +26,9 @@ const HEIGHT = 360
 
 /**
  * Menu opened by a click on the empty canvas (unlocked): search, then create an idea from a
- * template or place an alias of a reusable idea at that spot.
+ * template, place an alias of a « référençable » idea, or a card standing for a « référençable » map.
  */
-export function AddIdeaMenu({ at, bounds, templates, reusable, onCreate, onAlias, onClose }: AddIdeaMenuProps) {
+export function AddIdeaMenu({ at, bounds, templates, reusable, maps, onCreate, onAlias, onMapCard, onClose }: AddIdeaMenuProps) {
   const ref = useRef<HTMLDivElement>(null)
   const left = Math.max(8, Math.min(at.x, bounds.width - WIDTH - 8))
   const top = Math.max(8, Math.min(at.y, bounds.height - HEIGHT - 8))
@@ -53,7 +56,7 @@ export function AddIdeaMenu({ at, bounds, templates, reusable, onCreate, onAlias
       onDoubleClick={(e) => e.stopPropagation()}
     >
       <Command loop>
-        <CommandInput placeholder="Ajouter une idée ou un alias…" autoFocus={autoFocus} />
+        <CommandInput placeholder="Ajouter une idée, un alias, une carte…" autoFocus={autoFocus} />
         <CommandList className="max-h-[300px]">
           <CommandEmpty>Aucun résultat.</CommandEmpty>
           <CommandGroup heading="Nouvelle idée">
@@ -78,6 +81,21 @@ export function AddIdeaMenu({ at, bounds, templates, reusable, onCreate, onAlias
                   <span className="min-w-0 flex-1">
                     <span className="block truncate">{node.title || 'Sans titre'}</span>
                     <span className="block truncate text-xs text-muted-foreground">{location}</span>
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {maps.length > 0 && (
+            <CommandGroup heading="Carte">
+              {maps.map(({ map, name, location, size }) => (
+                <CommandItem key={map.id} value={`carte ${map.id} ${name}`} keywords={[name, location, 'carte']} onSelect={() => onMapCard(map.id)}>
+                  <MapIcon className="opacity-60" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{name || 'Sans titre'}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {[location, `${size} idée${size > 1 ? 's' : ''}`].filter(Boolean).join(' · ')}
+                    </span>
                   </span>
                 </CommandItem>
               ))}

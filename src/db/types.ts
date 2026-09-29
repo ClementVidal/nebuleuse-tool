@@ -42,6 +42,20 @@ export interface NodeTemplate {
   fields: TemplateField[]
 }
 
+/** Look of a link: set on the link itself, or shared by every link of a link template. */
+export type LinkStyle = Pick<IdeaEdge, 'arrows' | 'color' | 'strokeWidth' | 'path' | 'dash'>
+
+/** Link template ("type de lien"): a name, the label new links get, and a style they share. */
+export interface LinkTemplate {
+  id: string
+  projectId: string
+  name: string
+  order: number
+  /** Label given to a link when it gets this template. */
+  label: string
+  style: LinkStyle
+}
+
 export interface Project {
   id: string
   name: string
@@ -56,6 +70,8 @@ export interface ReflexionMap {
   /** Node that owns this map; null for the project's root map. */
   parentNodeId: string | null
   viewport?: { x: number; y: number; zoom: number }
+  /** « Référençable »: the map can be placed as a card on the project's other maps. */
+  reusable?: boolean
 }
 
 /** Richtext values are stored as markdown, dates as ISO `yyyy-mm-dd`, ranges as two dates. */
@@ -91,13 +107,18 @@ export interface IdeaNode {
   author?: 'claude'
   /** MCP call that created or last changed the idea. */
   batchId?: string
-  /** Can be placed in other maps as an alias (see aliasOf). */
+  /** « Référençable »: can be placed in other maps as an alias (see aliasOf). */
   reusable?: boolean
   /**
    * Alias: this record only holds a place on its map (position, size, links); title, content,
    * template and sub-map are those of the original idea, so editing either updates both.
    */
   aliasOf?: string
+  /**
+   * Map card: this record stands for another map of the project (a « référençable » one); it has
+   * a place, a size and links, no content. Clicking it opens that map.
+   */
+  mapRef?: string
 }
 
 export type IdeaStatus = 'draft' | 'ready'
@@ -118,4 +139,6 @@ export interface IdeaEdge {
   strokeWidth: StrokeWidth
   path: EdgePathKind
   dash: EdgeDash
+  /** Link template: when it exists, its style replaces the link's own. */
+  templateId?: string
 }

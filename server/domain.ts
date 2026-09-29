@@ -46,6 +46,8 @@ export interface MapRecord {
   projectId: string
   parentNodeId: string | null
   viewport?: { x: number; y: number; zoom: number }
+  /** « Référençable »: can be placed as a card on the project's other maps. */
+  reusable?: boolean
 }
 export interface NodeRecord {
   id: string
@@ -70,6 +72,8 @@ export interface NodeRecord {
   reusable?: boolean
   /** An alias: its content is the one of this idea, only its place is its own. */
   aliasOf?: string
+  /** Map card: stands for this map of the project (no content of its own). */
+  mapRef?: string
 }
 export interface EdgeRecord {
   id: string
@@ -83,6 +87,17 @@ export interface EdgeRecord {
   strokeWidth: string
   path: 'straight' | 'curved'
   dash: 'solid' | 'dashed' | 'dotted'
+  /** Link template: when it exists, its style replaces the link's own. */
+  templateId?: string
+}
+export type LinkStyle = Pick<EdgeRecord, 'arrows' | 'color' | 'strokeWidth' | 'path' | 'dash'>
+export interface LinkTemplate {
+  id: string
+  projectId: string
+  name: string
+  order: number
+  label: string
+  style: LinkStyle
 }
 
 /** Mirrors DEFAULT_NODE_SIZE / DEFAULT_EDGE / defaultTemplates in src/db/defaults.ts. */
@@ -95,6 +110,25 @@ const DEFAULT_EDGE = {
   path: 'curved',
   dash: 'solid',
 } as const
+
+const linkStyle = (style: Partial<LinkStyle>): LinkStyle => ({
+  arrows: DEFAULT_EDGE.arrows,
+  color: DEFAULT_EDGE.color,
+  strokeWidth: DEFAULT_EDGE.strokeWidth,
+  path: DEFAULT_EDGE.path,
+  dash: DEFAULT_EDGE.dash,
+  ...style,
+})
+
+/** Mirrors defaultLinkTemplates in src/db/defaults.ts. */
+export function defaultLinkTemplates(projectId: string): LinkTemplate[] {
+  return [
+    { id: nanoid(), projectId, order: 0, name: 'Lien', label: 'lié à', style: linkStyle({}) },
+    { id: nanoid(), projectId, order: 1, name: 'Cause', label: 'cause', style: linkStyle({ color: 'red', strokeWidth: 'thick' }) },
+    { id: nanoid(), projectId, order: 2, name: 'Opposition', label: 's’oppose à', style: linkStyle({ color: 'violet', dash: 'dashed', arrows: 'both' }) },
+    { id: nanoid(), projectId, order: 3, name: 'Illustration', label: 'illustre', style: linkStyle({ color: 'green', dash: 'dotted' }) },
+  ]
+}
 
 export function defaultTemplates(projectId: string): Template[] {
   return [
@@ -136,7 +170,7 @@ export class DomainError extends Error {}
 
 // ---------------------------------------------------------------- reading
 
-type Tables = { projects: Project; templates: Template; maps: MapRecord; nodes: NodeRecord; edges: EdgeRecord }
+type Tables = { projects: Project; templates: Template; maps: MapRecord; nodes: NodeRecord; edges: EdgeRecord; linkTemplates: LinkTemplate }
 
 /** A user's view of the store, with the writes of one operation buffered then pushed at once. */
 export class Store {
@@ -234,6 +268,10 @@ export class Store {
 
   async templates(projectId: string): Promise<Template[]> {
     return (await this.where('templates', 'projectId', projectId)).sort((a, b) => a.order - b.order)
+  }
+
+  async linkTemplates(projectId: string): Promise<LinkTemplate[]> {
+    return (await this.where('linkTemplates', 'projectId', projectId)).sort((a, b) => a.order - b.order)
   }
 
   async touchProject(projectId: string) {
@@ -354,6 +392,7 @@ interface OutlineIdea {
   status: string
   aliasOf?: string
   reusable?: boolean
+  mapCard?: { mapId: string; name: string }
   childMap?: { mapId: string; ideas: OutlineIdea[] }
 }
 
@@ -363,12 +402,18 @@ export async function getOutline(store: Store, projectId: string, maxDepth = 6) 
   const [nodes, templates] = await Promise.all([store.where('nodes', 'projectId', projectId), store.templates(projectId)])
   const tpl = new Map(templates.map((t) => [t.id, t.name]))
   const byId = new Map(nodes.map((n) => [n.id, n]))
+  const maps = new Map((await store.where('maps', 'projectId', projectId)).map((m) => [m.id, m]))
+  const mapName = (mapId: string) => {
+    const m = maps.get(mapId)
+    return m?.parentNodeId ? (byId.get(m.parentNodeId)?.title ?? '(carte introuvable)') : m ? project.name : '(carte introuvable)'
+  }
   const byMap = new Map<string, NodeRecord[]>()
   for (const n of nodes) byMap.set(n.mapId, [...(byMap.get(n.mapId) ?? []), n])
   const build = (mapId: string, depth: number): OutlineIdea[] =>
     (byMap.get(mapId) ?? [])
       .sort((a, b) => a.y - b.y || a.x - b.x)
       .map((n): OutlineIdea => {
+        if (n.mapRef) return { id: n.id, mapCard: { mapId: n.mapRef, name: mapName(n.mapRef) }, title: `Carte : ${mapName(n.mapRef)}`, template: null, status: 'ready' }
         // An alias: the original's title, its sub-map is listed under the original.
         const original = n.aliasOf ? byId.get(n.aliasOf) : undefined
         if (n.aliasOf)
@@ -394,21 +439,27 @@ export async function getOutline(store: Store, projectId: string, maxDepth = 6) 
     project: { id: project.id, name: project.name },
     rootMapId: project.rootMapId,
     ideas: build(project.rootMapId, 1),
-    totalIdeas: nodes.filter((n) => !n.aliasOf).length,
+    totalIdeas: nodes.filter((n) => !n.aliasOf && !n.mapRef).length,
+    referenceableMaps: [...maps.values()].filter((m) => m.reusable).map((m) => ({ mapId: m.id, name: mapName(m.id) })),
   }
 }
 
 export async function getMap(store: Store, mapId: string) {
   const map = await store.map(mapId)
-  const [nodes, edges, templates] = await Promise.all([
+  const [nodes, edges, templates, linkTemplates] = await Promise.all([
     store.where('nodes', 'mapId', mapId),
     store.where('edges', 'mapId', mapId),
     store.templates(map.projectId),
+    store.linkTemplates(map.projectId),
   ])
+  const linkType = new Map(linkTemplates.map((t) => [t.id, t.name]))
+  const cardMaps = new Map<string, string>()
+  for (const id of new Set(nodes.flatMap((n) => (n.mapRef ? [n.mapRef] : [])))) cardMaps.set(id, await mapName(store, id))
   const tpl = new Map(templates.map((t) => [t.id, t]))
   const parent = map.parentNodeId ? await store.get('nodes', map.parentNodeId) : undefined
   const originals = await aliasTargets(store, nodes)
   const describe = (n: NodeRecord) => {
+    if (n.mapRef) return { id: n.id, mapCard: { mapId: n.mapRef, name: cardMaps.get(n.mapRef) } }
     if (!n.aliasOf) return describeNode(n, tpl.get(n.templateId))
     const original = originals.get(n.aliasOf)
     return original
@@ -420,20 +471,42 @@ export async function getMap(store: Store, mapId: string) {
     projectId: map.projectId,
     parentIdea: parent ? { id: parent.id, title: parent.title, mapId: parent.mapId } : null,
     ideas: nodes.sort((a, b) => a.y - b.y || a.x - b.x).map(describe),
-    links: edges.map((e) => ({ id: e.id, from: e.source, to: e.target, label: e.label })),
+    reusable: !!map.reusable,
+    links: edges.map((e) => ({
+      id: e.id,
+      from: e.source,
+      to: e.target,
+      label: e.label,
+      ...(e.templateId && linkType.has(e.templateId) ? { type: linkType.get(e.templateId) } : {}),
+    })),
   }
+}
+
+/** Name of a map: its owner idea's title, or the project name for the root map. */
+async function mapName(store: Store, mapId: string) {
+  const map = await store.get('maps', mapId)
+  if (!map) return '(carte introuvable)'
+  if (!map.parentNodeId) return (await store.get('projects', map.projectId))?.name ?? ''
+  return (await store.get('nodes', map.parentNodeId))?.title ?? '(carte introuvable)'
 }
 
 export async function listTemplates(store: Store, projectId: string) {
   await store.project(projectId)
-  return (await store.templates(projectId)).map((t) => ({
-    name: t.name,
-    shape: t.style.shape,
-    color: t.style.color,
-    strokeWidth: t.style.strokeWidth,
-    dashed: t.style.dashed,
-    fields: t.fields.map(describeField),
-  }))
+  return {
+    ideaTemplates: (await store.templates(projectId)).map((t) => ({
+      name: t.name,
+      shape: t.style.shape,
+      color: t.style.color,
+      strokeWidth: t.style.strokeWidth,
+      dashed: t.style.dashed,
+      fields: t.fields.map(describeField),
+    })),
+    linkTemplates: (await store.linkTemplates(projectId)).map(describeLinkTemplate),
+  }
+}
+
+function describeLinkTemplate(t: LinkTemplate) {
+  return { name: t.name, label: t.label, ...t.style }
 }
 
 function describeField(f: TemplateField) {
@@ -456,7 +529,7 @@ export async function search(store: Store, projectId: string, query: string, lim
   const tpl = new Map(templates.map((t) => [t.id, t]))
   const hits: { id: string; title: string; mapId: string; excerpt: string }[] = []
   for (const n of nodes) {
-    if (n.aliasOf) continue
+    if (n.aliasOf || n.mapRef) continue
     const texts = [n.title, ...Object.values(n.values).map((v) => (typeof v === 'string' ? v : ''))]
     const hit = texts.find((t) => t.toLowerCase().includes(q))
     if (!hit) continue
@@ -477,6 +550,7 @@ export async function createProject(store: Store, name: string) {
   store.put('projects', { id, name: name.trim() || 'Sans titre', rootMapId: rootMap.id, createdAt: now, updatedAt: now })
   store.put('maps', rootMap)
   for (const t of defaultTemplates(id)) store.put('templates', t)
+  for (const t of defaultLinkTemplates(id)) store.put('linkTemplates', t)
   return { projectId: id, rootMapId: rootMap.id }
 }
 
@@ -495,6 +569,32 @@ export interface LinkInput {
   to: string
   label?: string
   arrows?: EdgeRecord['arrows']
+  /** Link template name. */
+  type?: string
+}
+
+function findLinkTemplate(templates: LinkTemplate[], name: string): LinkTemplate {
+  const t = templates.find((x) => x.name.toLowerCase() === name.trim().toLowerCase())
+  if (!t)
+    throw new DomainError(`Type de lien inconnu : « ${name} ». Types du projet : ${templates.map((x) => x.name).join(', ') || 'aucun'}`)
+  return t
+}
+
+/**
+ * A link's template, style and label from Claude's input: the named type, else the project's
+ * first one (as in the app). Arrows other than the type's make an untyped link with the type's look.
+ */
+function linkFields(templates: LinkTemplate[], input: { label?: string; arrows?: EdgeRecord['arrows']; type?: string }) {
+  const template = input.type ? findLinkTemplate(templates, input.type) : templates[0]
+  const style = template?.style ?? linkStyle({})
+  const arrows = input.arrows ?? style.arrows
+  const typed = template && arrows === style.arrows
+  return {
+    ...style,
+    arrows,
+    label: input.label ?? template?.label ?? DEFAULT_EDGE.label,
+    ...(typed ? { templateId: template.id } : {}),
+  }
 }
 export interface MapInput {
   ideas: IdeaInput[]
@@ -555,6 +655,7 @@ interface BuildContext {
   store: Store
   projectId: string
   templates: Template[]
+  linkTemplates: LinkTemplate[]
   batchId: string
   created: { key: string | undefined; id: string; title: string; mapId: string }[]
   links: number
@@ -607,11 +708,9 @@ async function buildInto(ctx: BuildContext, mapId: string, input: MapInput) {
     id: nanoid(),
     projectId: ctx.projectId,
     mapId,
-    ...DEFAULT_EDGE,
     source: resolve(l.from),
     target: resolve(l.to),
-    label: l.label ?? DEFAULT_EDGE.label,
-    arrows: l.arrows ?? DEFAULT_EDGE.arrows,
+    ...linkFields(ctx.linkTemplates, l),
   }))
   layout(newNodes, edges, existing)
   for (const n of newNodes) store.put('nodes', n)
@@ -650,6 +749,7 @@ export async function buildMap(store: Store, target: BuildTarget, input: MapInpu
     store,
     projectId: map.projectId,
     templates: await store.templates(map.projectId),
+    linkTemplates: await store.linkTemplates(map.projectId),
     batchId: nanoid(10),
     created: [],
     links: 0,
@@ -668,10 +768,13 @@ export type Operation =
       fields?: Record<string, unknown>
       status?: 'draft' | 'ready'
       template?: string
+      referenceable?: boolean
     }
   | { op: 'delete_idea'; id: string }
-  | { op: 'add_link'; from: string; to: string; label?: string; arrows?: EdgeRecord['arrows'] }
-  | { op: 'update_link'; id: string; label?: string; arrows?: EdgeRecord['arrows'] }
+  | { op: 'set_referenceable'; value: boolean }
+  | { op: 'add_map_card'; map: string }
+  | { op: 'add_link'; from: string; to: string; label?: string; arrows?: EdgeRecord['arrows']; type?: string }
+  | { op: 'update_link'; id: string; label?: string; arrows?: EdgeRecord['arrows']; type?: string }
   | { op: 'delete_link'; id: string }
 
 /** Deletes ideas with everything under them (links, sub-maps, their ideas), as the app does. */
@@ -692,6 +795,8 @@ async function deleteIdeas(store: Store, ids: string[]) {
       if (node.childMapId) {
         for (const e of await store.where('edges', 'mapId', node.childMapId)) store.remove('edges', e.id)
         next.push(...(await store.where('nodes', 'mapId', node.childMapId)).map((n) => n.id))
+        // Cards standing for the deleted map go with it.
+        next.push(...(await store.where('nodes', 'mapRef', node.childMapId)).map((n) => n.id))
         store.remove('maps', node.childMapId)
       }
     }
@@ -703,6 +808,7 @@ async function deleteIdeas(store: Store, ids: string[]) {
 export async function updateMap(store: Store, mapId: string, operations: Operation[]) {
   const map = await store.map(mapId)
   const templates = await store.templates(map.projectId)
+  const linkTemplates = await store.linkTemplates(map.projectId)
   const batchId = nanoid(10)
   const done: string[] = []
   for (const [i, op] of operations.entries()) {
@@ -712,6 +818,7 @@ export async function updateMap(store: Store, mapId: string, operations: Operati
         case 'update_idea': {
           const placed = await store.node(op.id)
           if (placed.mapId !== mapId) throw new DomainError('cette idée est sur une autre carte')
+          if (placed.mapRef) throw new DomainError('c’est une carte (un renvoi vers une autre carte), pas une idée : rien à modifier')
           // An alias: the change goes to the original, seen everywhere it's placed.
           const node = placed.aliasOf ? await store.node(placed.aliasOf) : placed
           const template = op.template ? findTemplate(templates, op.template) : templates.find((t) => t.id === node.templateId)
@@ -722,6 +829,7 @@ export async function updateMap(store: Store, mapId: string, operations: Operati
             title: op.title?.trim() || node.title,
             values: applyValues(template, node.values, op.text, op.fields),
             status: op.status ?? node.status,
+            ...(op.referenceable !== undefined ? { reusable: op.referenceable || undefined } : {}),
             batchId,
           })
           done.push(`idée modifiée : ${op.title ?? node.title}`)
@@ -731,11 +839,49 @@ export async function updateMap(store: Store, mapId: string, operations: Operati
           const node = await store.node(op.id)
           if (node.mapId !== mapId) throw new DomainError('cette idée est sur une autre carte')
           const n = await deleteIdeas(store, [op.id])
+          if (node.mapRef) {
+            done.push('renvoi vers une carte retiré (la carte reste)')
+            break
+          }
           if (node.aliasOf) {
             done.push('alias retiré (l’idée d’origine reste)')
             break
           }
           done.push(`idée supprimée : ${node.title}${n > 1 ? ` (+ ${n - 1} dans sa sous-carte)` : ''}`)
+          break
+        }
+        case 'set_referenceable': {
+          store.put('maps', { ...(await store.map(mapId)), reusable: op.value || undefined })
+          done.push(op.value ? 'carte référençable' : 'carte non référençable')
+          break
+        }
+        case 'add_map_card': {
+          const target = await store.map(String(op.map))
+          if (target.projectId !== map.projectId) throw new DomainError('cette carte est dans un autre projet')
+          if (target.id === mapId) throw new DomainError('une carte ne peut pas se référencer elle-même')
+          if (!target.reusable)
+            throw new DomainError('cette carte n’est pas référençable : rends-la référençable (set_referenceable sur elle) d’abord')
+          // Placed right of what's on the map.
+          const onMap = await store.where('nodes', 'mapId', mapId)
+          const right = onMap.reduce((m, n) => Math.max(m, n.x + n.width), 0)
+          const top = onMap.reduce((m, n) => Math.min(m, n.y), onMap.length ? Infinity : 0)
+          const card: NodeRecord = {
+            id: nanoid(),
+            projectId: map.projectId,
+            mapId,
+            templateId: '',
+            title: '',
+            values: {},
+            x: onMap.length ? right + 80 : 0,
+            y: top,
+            width: 260,
+            height: 132,
+            childMapId: null,
+            mapRef: target.id,
+            batchId,
+          }
+          store.put('nodes', card)
+          done.push(`carte ajoutée : ${await mapName(store, target.id)} (id ${card.id}, à relier avec add_link)`)
           break
         }
         case 'add_link': {
@@ -745,11 +891,9 @@ export async function updateMap(store: Store, mapId: string, operations: Operati
             id: nanoid(),
             projectId: map.projectId,
             mapId,
-            ...DEFAULT_EDGE,
             source: a.id,
             target: b.id,
-            label: op.label ?? DEFAULT_EDGE.label,
-            arrows: op.arrows ?? DEFAULT_EDGE.arrows,
+            ...linkFields(linkTemplates, op),
           })
           done.push(`lien ajouté : ${a.title} → ${b.title}`)
           break
@@ -757,7 +901,20 @@ export async function updateMap(store: Store, mapId: string, operations: Operati
         case 'update_link': {
           const edge = await store.get('edges', op.id)
           if (!edge || edge.mapId !== mapId) throw new DomainError(`lien introuvable sur cette carte : ${op.id}`)
-          store.put('edges', { ...edge, label: op.label ?? edge.label, arrows: op.arrows ?? edge.arrows })
+          if (op.type !== undefined) {
+            // New type: its look, and its label unless one is given.
+            const { templateId: _, ...rest } = edge
+            store.put('edges', { ...rest, ...linkFields(linkTemplates, { type: op.type, label: op.label, arrows: op.arrows }) })
+          } else {
+            const next = { ...edge, label: op.label ?? edge.label }
+            // Other arrows than the type's: the link keeps the type's look as its own.
+            const template = edge.templateId ? linkTemplates.find((t) => t.id === edge.templateId) : undefined
+            if (op.arrows && template && op.arrows !== template.style.arrows) {
+              Object.assign(next, template.style, { arrows: op.arrows })
+              delete next.templateId
+            } else if (op.arrows) next.arrows = op.arrows
+            store.put('edges', next)
+          }
           done.push(`lien modifié : ${op.label ?? edge.label}`)
           break
         }
@@ -965,4 +1122,77 @@ export async function updateTemplate(
   store.put('templates', { ...template, name, style, fields })
   await store.touchProject(projectId)
   return { name, ...style, fields: fields.map(describeField), usedBy: usage.length, done }
+}
+
+// ---------------------------------------------------------------- link templates
+
+const ARROWS = ['none', 'start', 'end', 'both'] as const
+const PATHS = ['straight', 'curved'] as const
+const DASHES = ['solid', 'dashed', 'dotted'] as const
+
+export interface LinkStyleInput {
+  label?: string
+  arrows?: string
+  color?: string
+  strokeWidth?: string
+  path?: string
+  dash?: string
+}
+
+function applyLinkStyle(style: LinkStyle, input: LinkStyleInput): LinkStyle {
+  return {
+    arrows: input.arrows !== undefined ? pick(input.arrows, ARROWS, 'Flèches') : style.arrows,
+    color: input.color !== undefined ? pick(input.color, COLORS, 'Couleur') : style.color,
+    strokeWidth: input.strokeWidth !== undefined ? pick(input.strokeWidth, STROKE_WIDTHS, 'Épaisseur') : style.strokeWidth,
+    path: input.path !== undefined ? pick(input.path, PATHS, 'Tracé') : style.path,
+    dash: input.dash !== undefined ? pick(input.dash, DASHES, 'Trait') : style.dash,
+  }
+}
+
+function checkLinkTemplateName(templates: LinkTemplate[], name: string | undefined, except?: string) {
+  const n = name?.trim()
+  if (!n) throw new DomainError('Le type de lien doit avoir un nom')
+  if (templates.some((t) => t.id !== except && t.name.toLowerCase() === n.toLowerCase()))
+    throw new DomainError(`Un type de lien « ${n} » existe déjà dans ce projet`)
+  return n
+}
+
+export async function createLinkTemplate(store: Store, projectId: string, input: { name: string; first?: boolean } & LinkStyleInput) {
+  await store.project(projectId)
+  const templates = await store.linkTemplates(projectId)
+  const name = checkLinkTemplateName(templates, input.name)
+  const template: LinkTemplate = {
+    id: nanoid(),
+    projectId,
+    name,
+    // First: the type new links get.
+    order: input.first ? (templates[0]?.order ?? 0) - 1 : (templates.at(-1)?.order ?? -1) + 1,
+    label: input.label?.trim() ?? name.toLowerCase(),
+    style: applyLinkStyle(linkStyle({}), input),
+  }
+  store.put('linkTemplates', template)
+  await store.touchProject(projectId)
+  return describeLinkTemplate(template)
+}
+
+export async function updateLinkTemplate(
+  store: Store,
+  projectId: string,
+  input: { template: string; rename?: string; first?: boolean } & LinkStyleInput,
+) {
+  await store.project(projectId)
+  if (!input.template?.trim()) throw new DomainError('Indique le type de lien à modifier (son nom)')
+  const templates = await store.linkTemplates(projectId)
+  const template = findLinkTemplate(templates, input.template)
+  const next: LinkTemplate = {
+    ...template,
+    name: input.rename !== undefined ? checkLinkTemplateName(templates, input.rename, template.id) : template.name,
+    label: input.label !== undefined ? input.label.trim() : template.label,
+    style: applyLinkStyle(template.style, input),
+    order: input.first ? (templates[0]?.order ?? 0) - (templates[0]?.id === template.id ? 0 : 1) : template.order,
+  }
+  store.put('linkTemplates', next)
+  await store.touchProject(projectId)
+  const usedBy = (await store.where('edges', 'projectId', projectId)).filter((e) => e.templateId === template.id).length
+  return { ...describeLinkTemplate(next), usedBy }
 }

@@ -9,7 +9,7 @@ export interface Sql {
   query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<T[]>
 }
 
-export const SYNC_TABLES = ['projects', 'templates', 'maps', 'nodes', 'edges'] as const
+export const SYNC_TABLES = ['projects', 'templates', 'maps', 'nodes', 'edges', 'linkTemplates'] as const
 export type SyncTable = (typeof SYNC_TABLES)[number]
 
 export interface RecordChange {

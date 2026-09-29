@@ -1,6 +1,6 @@
 import { Link, Navigate, useNavigate } from '@tanstack/react-router'
 import { ReactFlowProvider } from '@xyflow/react'
-import { House, Redo2, Search, Shapes, Undo2 } from 'lucide-react'
+import { House, Redo2, Search, Settings2, Shapes, Undo2 } from 'lucide-react'
 import { Fragment, useCallback, useState } from 'react'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { AccountButton } from '@/features/shell/account-button'
@@ -21,6 +21,7 @@ import { useBreadcrumb, useHistoryState, useMap, useProject, useTemplates } from
 import { setCommandPaletteOpen } from '@/features/shell/palette-store'
 import { KeyboardHelp } from './keyboard-help'
 import { MapCanvas } from './map-canvas'
+import { MapSettingsSheet } from './map-settings-sheet'
 
 interface MapPageProps {
   projectId: string
@@ -46,6 +47,12 @@ export function MapPage({ projectId, mapId, focusNodeId }: MapPageProps) {
     },
     [navigate, projectId],
   )
+
+  const openMap = useCallback(
+    (target: string) => void navigate({ to: '/projects/$projectId/maps/$mapId', params: { projectId, mapId: target } }),
+    [navigate, projectId],
+  )
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const parentNode = map?.parentNodeId ? breadcrumb?.at(-1)?.node : null
   const navigateUp = useCallback(() => {
@@ -133,6 +140,9 @@ export function MapPage({ projectId, mapId, focusNodeId }: MapPageProps) {
         <Button variant="ghost" size="icon" className="md:hidden" aria-label="Rechercher" onClick={() => setCommandPaletteOpen(true)}>
           <Search />
         </Button>
+        <Button variant="ghost" size="icon" title="Réglages de la carte" aria-label="Réglages de la carte" onClick={() => setSettingsOpen(true)}>
+          <Settings2 />
+        </Button>
         <Button variant="ghost" size="icon" asChild title="Templates du projet">
           <Link to="/projects/$projectId/templates" params={{ projectId }}>
             <Shapes />
@@ -153,6 +163,7 @@ export function MapPage({ projectId, mapId, focusNodeId }: MapPageProps) {
             activeTemplateId={activeTemplateId}
             focusNodeId={focusNodeId}
             onOpenNode={openNode}
+            onOpenMap={openMap}
             onNavigateUp={parentNode ? navigateUp : undefined}
             onTemplateUsed={setActiveTemplateId}
             onFocusConsumed={dropFocusFromUrl}
@@ -160,6 +171,7 @@ export function MapPage({ projectId, mapId, focusNodeId }: MapPageProps) {
           />
         </ReactFlowProvider>
       </main>
+      <MapSettingsSheet map={map} label={breadcrumb.at(-1)?.label ?? project.name} open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   )
 }

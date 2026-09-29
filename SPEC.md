@@ -26,7 +26,7 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 - Tout nœud est **navigable** : l'ouvrir crée (à la demande) sa carte enfant.
 
 ### Alias
-- Réglage d'une idée **« Réutilisable ailleurs »** : l'idée est proposée dans le menu d'ajout de toutes
+- Réglage d'une idée **« Référençable »** : l'idée est proposée dans le menu d'ajout de toutes
   les cartes du projet. Le panneau indique combien d'alias existent.
 - Un **alias** est la même idée placée sur une autre carte (ou ailleurs sur la même) : titre, texte,
   champs, template, statut, sous-carte et favori sont ceux de l'idée d'origine ; seuls la position,
@@ -64,6 +64,27 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 - **Flèches** : aucune, au début, à la fin, aux deux extrémités.
 - **Couleur** (palette limitée), **épaisseur** (fine / moyenne / épaisse),
   **tracé** (droit / courbe), **trait** (plein / tirets / pointillés).
+- **Type de lien** (template de lien, par projet) : un nom, le nom donné aux liens, et un style
+  (flèches, couleur, épaisseur, tracé, trait) partagé par tous ses liens. Types par défaut d'un nouveau
+  projet : Lien (« lié à »), Cause (« cause », rouge épais), Opposition (« s'oppose à », violet,
+  tirets, deux flèches), Illustration (« illustre », vert, pointillés). Les projets plus anciens
+  peuvent les ajouter d'un clic dans l'éditeur de templates.
+  - Un nouveau lien prend le premier type de la liste (nom et style).
+  - Panneau du lien : **Type de lien** (ou « Sans type », style propre). Changer de type change le
+    nom du lien s'il n'avait pas été renommé. Sur un lien typé, modifier le style modifie le type,
+    donc tous ses liens.
+  - Éditeur de templates : section **Liens** (nom, nom donné aux liens, style, aperçu). Supprimer un
+    type laisse ses liens avec leur style actuel.
+
+### Carte référencée
+- Réglages de la carte (bouton **Réglages de la carte** dans l'en-tête) : **« Référençable »**. La
+  carte est alors proposée dans le menu d'ajout des autres cartes du projet (groupe **Carte**).
+- La choisir place une **carte** : une fiche à part (feuillets empilés, mention « Carte »), avec le nom
+  de la carte (titre de son idée, ou nom du projet pour la racine), où elle vit, ses premières idées
+  et leur nombre. Elle se relie aux idées par des liens, se déplace et se redimensionne.
+- Verrouillé : un clic l'ouvre. Déverrouillé : un clic affiche son menu (**Ouvrir la carte**,
+  **Retirer**, …) ; double-clic et `Entrée` l'ouvrent.
+- Supprimer l'idée qui possède la carte (donc la carte) retire aussi les fiches qui la référencent.
 
 ## Style visuel
 - On reprend l'**UX** d'Excalidraw (simple, directe, peu de menus, tout au clavier),
@@ -157,8 +178,9 @@ Déverrouillé :
 - Clic sur le fond (rien d'ouvert ni de sélectionné, sinon le clic ferme / désélectionne d'abord) :
   **menu d'ajout** à cet endroit, avec une recherche rapide (`N` l'ouvre au centre de la vue) :
   - **Nouvelle idée** : un item par template ; l'idée est créée à cet endroit, titre prêt à être saisi ;
-  - **Alias d'une idée** : les idées « Réutilisables ailleurs » du projet (avec la carte où elles
-    vivent) ; en choisir une place un alias à cet endroit.
+  - **Alias d'une idée** : les idées « Référençables » du projet (avec la carte où elles
+    vivent) ; en choisir une place un alias à cet endroit ;
+  - **Carte** : les cartes « Référençables » du projet (sauf celle-ci) ; en choisir une place sa fiche.
   La barre d'outils n'a plus de sélecteur de template ; le dernier template choisi sert aussi à `Tab`.
 - Poignées **+** autour de l'idée survolée ou sélectionnée (haut, droite, gauche) : les glisser
   - sur une autre idée : crée un lien, sélectionné, son nom prêt à être modifié ;
@@ -224,8 +246,13 @@ Déverrouillé :
   `create_project`, `build_map` (idées + liens + sous-cartes en un appel, placement automatique),
   `update_map` (modifier / supprimer idées et liens, tout ou rien), `create_template` (nom, apparence,
   champs avec leurs options) et `update_template` (renommer, apparence, ajouter / modifier / supprimer /
-  déplacer des champs, tout ou rien ; renommer un champ garde les valeurs des idées). Pas de
-  suppression de template par Claude.
+  déplacer des champs, tout ou rien ; renommer un champ garde les valeurs des idées),
+  `create_link_template` / `update_link_template` (types de lien). `list_templates` rend les templates
+  d'idées et les types de lien. Pas de suppression de template par Claude.
+- Liens : `type` (nom d'un type de lien) dans `build_map` et `update_map` ; sans type, le premier.
+- Cartes référencées : `update_map` → `set_referenceable` (cette carte), `add_map_card` (placer la fiche
+  d'une carte référençable), `update_idea` → `referenceable` (idée). `get_map` et `get_outline`
+  décrivent les fiches (`mapCard`) ; `get_outline` liste les cartes référençables.
 - Les idées écrites par Claude sont marquées « Claude » et arrivent en statut Brouillon.
 - Plus tard : annuler d'un geste un lot écrit par Claude (chaque idée garde l'id de son lot).
 
