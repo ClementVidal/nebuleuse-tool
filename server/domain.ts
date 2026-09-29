@@ -66,6 +66,10 @@ export interface NodeRecord {
   author?: 'claude'
   /** Id of the MCP call that created or last changed the idea (to review or undo a batch). */
   batchId?: string
+  /** Offered as an alias on the project's other maps. */
+  reusable?: boolean
+  /** An alias: its content is the one of this idea, only its place is its own. */
+  aliasOf?: string
 }
 export interface EdgeRecord {
   id: string
@@ -83,7 +87,14 @@ export interface EdgeRecord {
 
 /** Mirrors DEFAULT_NODE_SIZE / DEFAULT_EDGE / defaultTemplates in src/db/defaults.ts. */
 const NODE_WIDTH = 300
-const DEFAULT_EDGE = { label: 'lié à', arrows: 'end', color: 'ink', strokeWidth: 'medium', path: 'curved', dash: 'solid' } as const
+const DEFAULT_EDGE = {
+  label: 'lié à',
+  arrows: 'end',
+  color: 'ink',
+  strokeWidth: 'medium',
+  path: 'curved',
+  dash: 'solid',
+} as const
 
 export function defaultTemplates(projectId: string): Template[] {
   return [
@@ -268,18 +279,27 @@ function findTemplate(templates: Template[], name: string | undefined): Template
   if (templates.length === 0) throw new DomainError('Ce projet n’a aucun template')
   if (!name) return templates.find((t) => t.name.toLowerCase() === 'réflexion') ?? templates[0]
   const t = templates.find((x) => x.name.toLowerCase() === name.trim().toLowerCase())
-  if (!t) throw new DomainError(`Template inconnu : « ${name} ». Templates du projet : ${templates.map((x) => x.name).join(', ')}`)
+  if (!t)
+    throw new DomainError(`Template inconnu : « ${name} ». Templates du projet : ${templates.map((x) => x.name).join(', ')}`)
   return t
 }
 
 function findField(template: Template, label: string): TemplateField {
   const f = template.fields.find((x) => x.label.toLowerCase() === label.trim().toLowerCase())
-  if (!f) throw new DomainError(`Champ inconnu dans « ${template.name} » : « ${label} ». Champs : ${template.fields.map((x) => x.label).join(', ')}`)
+  if (!f)
+    throw new DomainError(
+      `Champ inconnu dans « ${template.name} » : « ${label} ». Champs : ${template.fields.map((x) => x.label).join(', ')}`,
+    )
   return f
 }
 
 /** Values of a new or updated idea from Claude's `text` and `fields`. */
-function applyValues(template: Template, values: Record<string, FieldValue>, text: string | undefined, fields: Record<string, unknown> | undefined) {
+function applyValues(
+  template: Template,
+  values: Record<string, FieldValue>,
+  text: string | undefined,
+  fields: Record<string, unknown> | undefined,
+) {
   const out = { ...values }
   if (text !== undefined) {
     const rich = template.fields.find((f) => f.type === 'richtext')
@@ -295,21 +315,29 @@ function applyValues(template: Template, values: Record<string, FieldValue>, tex
 }
 
 /** A readable view of an idea for Claude: fields by name. */
-export function describeNode(node: NodeRecord, template: Template | undefined) {
+export function describeNode(node: NodeRecord, template: Template | undefined, aliasId?: string) {
   const fields: Record<string, unknown> = {}
   for (const f of template?.fields ?? []) {
     const v = f.readOnly ? (f.defaultValue ?? null) : (node.values[f.id] ?? null)
     if (v !== null && v !== undefined && v !== '') fields[f.label] = v
   }
   return {
-    id: node.id,
+    ...(aliasId ? { id: aliasId, aliasOf: node.id } : { id: node.id }),
     title: node.title,
     template: template?.name ?? null,
     status: node.status ?? 'draft',
     fields,
     ...(node.childMapId ? { childMapId: node.childMapId } : {}),
     ...(node.author ? { author: node.author } : {}),
+    ...(node.reusable ? { reusable: true } : {}),
   }
+}
+
+/** Originals of the aliases among these ideas, by id (a missing original is left out). */
+async function aliasTargets(store: Store, nodes: NodeRecord[]) {
+  const ids = [...new Set(nodes.flatMap((n) => (n.aliasOf ? [n.aliasOf] : [])))]
+  const found = await Promise.all(ids.map((id) => store.get('nodes', id)))
+  return new Map(found.flatMap((n) => (n ? [[n.id, n] as const] : [])))
 }
 
 // ---------------------------------------------------------------- queries
@@ -324,6 +352,8 @@ interface OutlineIdea {
   title: string
   template: string | null
   status: string
+  aliasOf?: string
+  reusable?: boolean
   childMap?: { mapId: string; ideas: OutlineIdea[] }
 }
 
@@ -332,33 +362,64 @@ export async function getOutline(store: Store, projectId: string, maxDepth = 6) 
   const project = await store.project(projectId)
   const [nodes, templates] = await Promise.all([store.where('nodes', 'projectId', projectId), store.templates(projectId)])
   const tpl = new Map(templates.map((t) => [t.id, t.name]))
+  const byId = new Map(nodes.map((n) => [n.id, n]))
   const byMap = new Map<string, NodeRecord[]>()
   for (const n of nodes) byMap.set(n.mapId, [...(byMap.get(n.mapId) ?? []), n])
   const build = (mapId: string, depth: number): OutlineIdea[] =>
     (byMap.get(mapId) ?? [])
       .sort((a, b) => a.y - b.y || a.x - b.x)
-      .map((n) => ({
-        id: n.id,
-        title: n.title,
-        template: tpl.get(n.templateId) ?? null,
-        status: n.status ?? 'draft',
-        ...(n.childMapId && (byMap.get(n.childMapId)?.length ?? 0) > 0
-          ? { childMap: { mapId: n.childMapId, ideas: depth < maxDepth ? build(n.childMapId, depth + 1) : [] } }
-          : {}),
-      }))
-  return { project: { id: project.id, name: project.name }, rootMapId: project.rootMapId, ideas: build(project.rootMapId, 1), totalIdeas: nodes.length }
+      .map((n): OutlineIdea => {
+        // An alias: the original's title, its sub-map is listed under the original.
+        const original = n.aliasOf ? byId.get(n.aliasOf) : undefined
+        if (n.aliasOf)
+          return {
+            id: n.id,
+            aliasOf: n.aliasOf,
+            title: original?.title ?? '(idée introuvable)',
+            template: original ? (tpl.get(original.templateId) ?? null) : null,
+            status: original?.status ?? 'draft',
+          }
+        return {
+          id: n.id,
+          title: n.title,
+          template: tpl.get(n.templateId) ?? null,
+          status: n.status ?? 'draft',
+          ...(n.reusable ? { reusable: true } : {}),
+          ...(n.childMapId && (byMap.get(n.childMapId)?.length ?? 0) > 0
+            ? { childMap: { mapId: n.childMapId, ideas: depth < maxDepth ? build(n.childMapId, depth + 1) : [] } }
+            : {}),
+        }
+      })
+  return {
+    project: { id: project.id, name: project.name },
+    rootMapId: project.rootMapId,
+    ideas: build(project.rootMapId, 1),
+    totalIdeas: nodes.filter((n) => !n.aliasOf).length,
+  }
 }
 
 export async function getMap(store: Store, mapId: string) {
   const map = await store.map(mapId)
-  const [nodes, edges, templates] = await Promise.all([store.where('nodes', 'mapId', mapId), store.where('edges', 'mapId', mapId), store.templates(map.projectId)])
+  const [nodes, edges, templates] = await Promise.all([
+    store.where('nodes', 'mapId', mapId),
+    store.where('edges', 'mapId', mapId),
+    store.templates(map.projectId),
+  ])
   const tpl = new Map(templates.map((t) => [t.id, t]))
   const parent = map.parentNodeId ? await store.get('nodes', map.parentNodeId) : undefined
+  const originals = await aliasTargets(store, nodes)
+  const describe = (n: NodeRecord) => {
+    if (!n.aliasOf) return describeNode(n, tpl.get(n.templateId))
+    const original = originals.get(n.aliasOf)
+    return original
+      ? describeNode(original, tpl.get(original.templateId), n.id)
+      : { id: n.id, aliasOf: n.aliasOf, title: '(idée introuvable)' }
+  }
   return {
     mapId: map.id,
     projectId: map.projectId,
     parentIdea: parent ? { id: parent.id, title: parent.title, mapId: parent.mapId } : null,
-    ideas: nodes.sort((a, b) => a.y - b.y || a.x - b.x).map((n) => describeNode(n, tpl.get(n.templateId))),
+    ideas: nodes.sort((a, b) => a.y - b.y || a.x - b.x).map(describe),
     links: edges.map((e) => ({ id: e.id, from: e.source, to: e.target, label: e.label })),
   }
 }
@@ -387,6 +448,7 @@ export async function search(store: Store, projectId: string, query: string, lim
   const tpl = new Map(templates.map((t) => [t.id, t]))
   const hits: { id: string; title: string; mapId: string; excerpt: string }[] = []
   for (const n of nodes) {
+    if (n.aliasOf) continue
     const texts = [n.title, ...Object.values(n.values).map((v) => (typeof v === 'string' ? v : ''))]
     const hit = texts.find((t) => t.toLowerCase().includes(q))
     if (!hit) continue
@@ -436,7 +498,8 @@ function estimateHeight(title: string, text: string | undefined, template: Templ
   const filled = template.fields.filter((f) => values[f.id] !== undefined && values[f.id] !== null && f.showOnNode !== false)
   const lines = Math.ceil(title.length / 28) + (text ? Math.ceil(text.length / 42) + (text.match(/\n/g)?.length ?? 0) : 0)
   const timeline = filled.some((f) => f.type === 'date' || f.type === 'daterange') ? 78 : 0
-  const labels = filled.filter((f) => f.type === 'richtext').length > 1 ? 18 * filled.filter((f) => f.type === 'richtext').length : 0
+  const labels =
+    filled.filter((f) => f.type === 'richtext').length > 1 ? 18 * filled.filter((f) => f.type === 'richtext').length : 0
   return Math.round(Math.min(480, Math.max(170, 120 + lines * 20 + timeline + labels)))
 }
 
@@ -499,7 +562,8 @@ async function buildInto(ctx: BuildContext, mapId: string, input: MapInput) {
     if (!idea.title?.trim()) throw new DomainError('Chaque idée doit avoir un titre')
     const template = findTemplate(ctx.templates, idea.template)
     const defaults: Record<string, FieldValue> = {}
-    for (const f of template.fields) if (!f.readOnly && f.defaultValue !== undefined && f.defaultValue !== null) defaults[f.id] = f.defaultValue
+    for (const f of template.fields)
+      if (!f.readOnly && f.defaultValue !== undefined && f.defaultValue !== null) defaults[f.id] = f.defaultValue
     const values = applyValues(template, defaults, idea.text, idea.fields)
     const node: NodeRecord = {
       id: nanoid(),
@@ -588,7 +652,15 @@ export async function buildMap(store: Store, target: BuildTarget, input: MapInpu
 }
 
 export type Operation =
-  | { op: 'update_idea'; id: string; title?: string; text?: string; fields?: Record<string, unknown>; status?: 'draft' | 'ready'; template?: string }
+  | {
+      op: 'update_idea'
+      id: string
+      title?: string
+      text?: string
+      fields?: Record<string, unknown>
+      status?: 'draft' | 'ready'
+      template?: string
+    }
   | { op: 'delete_idea'; id: string }
   | { op: 'add_link'; from: string; to: string; label?: string; arrows?: EdgeRecord['arrows'] }
   | { op: 'update_link'; id: string; label?: string; arrows?: EdgeRecord['arrows'] }
@@ -604,8 +676,11 @@ async function deleteIdeas(store: Store, ids: string[]) {
       const node = await store.get('nodes', id)
       if (!node) continue
       count++
-      for (const e of await store.where('edges', 'mapId', node.mapId)) if (e.source === id || e.target === id) store.remove('edges', e.id)
+      for (const e of await store.where('edges', 'mapId', node.mapId))
+        if (e.source === id || e.target === id) store.remove('edges', e.id)
       store.remove('nodes', id)
+      // Deleting an idea removes its aliases too.
+      if (!node.aliasOf) next.push(...(await store.where('nodes', 'aliasOf', id)).map((n) => n.id))
       if (node.childMapId) {
         for (const e of await store.where('edges', 'mapId', node.childMapId)) store.remove('edges', e.id)
         next.push(...(await store.where('nodes', 'mapId', node.childMapId)).map((n) => n.id))
@@ -627,8 +702,10 @@ export async function updateMap(store: Store, mapId: string, operations: Operati
     try {
       switch (op.op) {
         case 'update_idea': {
-          const node = await store.node(op.id)
-          if (node.mapId !== mapId) throw new DomainError('cette idée est sur une autre carte')
+          const placed = await store.node(op.id)
+          if (placed.mapId !== mapId) throw new DomainError('cette idée est sur une autre carte')
+          // An alias: the change goes to the original, seen everywhere it's placed.
+          const node = placed.aliasOf ? await store.node(placed.aliasOf) : placed
           const template = op.template ? findTemplate(templates, op.template) : templates.find((t) => t.id === node.templateId)
           if (!template) throw new DomainError('template de l’idée introuvable')
           store.put('nodes', {
@@ -646,6 +723,10 @@ export async function updateMap(store: Store, mapId: string, operations: Operati
           const node = await store.node(op.id)
           if (node.mapId !== mapId) throw new DomainError('cette idée est sur une autre carte')
           const n = await deleteIdeas(store, [op.id])
+          if (node.aliasOf) {
+            done.push('alias retiré (l’idée d’origine reste)')
+            break
+          }
           done.push(`idée supprimée : ${node.title}${n > 1 ? ` (+ ${n - 1} dans sa sous-carte)` : ''}`)
           break
         }

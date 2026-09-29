@@ -28,13 +28,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { createEdge, createNode, deleteEdges, deleteNodes, restack, saveViewport, setBookmarked, updateNodePositions } from '@/db/actions'
+import { createAlias, createEdge, createNode, deleteEdges, deleteNodes, restack, saveViewport, setBookmarked, updateNodePositions } from '@/db/actions'
 import { DEFAULT_NODE_SIZE } from '@/db/defaults'
 import { colorCss, dimmedColorCss } from '@/db/palette'
 import { record } from '@/db/history'
-import { type TimelineEntry, useChildMapSizes, useMapEdges, useMapNodes, useTimelines } from '@/db/hooks'
+import { type TimelineEntry, useAliasTargets, useChildMapSizes, useMapEdges, useMapNodes, useReusableNodes, useTimelines } from '@/db/hooks'
 import type { IdeaNode, NodeTemplate, ReflexionMap } from '@/db/types'
 import { cn } from '@/lib/utils'
+import { AddIdeaMenu } from './add-idea-menu'
 import { EdgePanel } from './edge-panel'
 import { center } from './geometry'
 import { IdeaNodeComponent, type IdeaFlowNode } from './idea-node'
@@ -64,17 +65,19 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 const EMPTY_TIMELINES = new Map<string, TimelineEntry[]>()
+const EMPTY_TARGETS = new Map<string, IdeaNode>()
 
 interface MapCanvasProps {
   map: ReflexionMap
   templates: NodeTemplate[]
-  /** Template used for nodes created from the canvas. */
+  /** Template of the last idea created from the canvas (used by Tab, "linked idea"). */
   activeTemplateId: string | undefined
   /** Node to select when the map opens (e.g. the node we just came back from). */
   focusNodeId: string | undefined
   onOpenNode: (nodeId: string) => void
   onNavigateUp: (() => void) | undefined
-  onSelectTemplateIndex: (index: number) => void
+  /** An idea was created with this template (remembered for Tab). */
+  onTemplateUsed: (templateId: string) => void
   /**
    * Called once `focusNodeId` has been revealed, so the page can drop it from the URL:
    * going back to this map then restores the last view instead of re-centering.
@@ -91,7 +94,7 @@ export function MapCanvas({
   focusNodeId,
   onOpenNode,
   onNavigateUp,
-  onSelectTemplateIndex,
+  onTemplateUsed,
   onFocusConsumed,
   mapLabel,
 }: MapCanvasProps) {
@@ -99,7 +102,11 @@ export function MapCanvas({
   const wrapperRef = useRef<HTMLDivElement>(null)
   const dbNodes = useMapNodes(map.id)
   const dbEdges = useMapEdges(map.id)
-  const childMapSizes = useChildMapSizes(dbNodes)
+  const aliasTargets = useAliasTargets(dbNodes)
+  const reusable = useReusableNodes(map.projectId)
+  // Child map sizes of the ideas shown here, originals of aliases included (for the depth arrows).
+  const shownIdeas = useMemo(() => [...(dbNodes ?? []), ...(aliasTargets?.values() ?? [])], [dbNodes, aliasTargets])
+  const childMapSizes = useChildMapSizes(shownIdeas)
   const timelines = useTimelines(map.projectId)
   const locked = useCanvasLocked()
   const [nodes, setNodes] = useState<IdeaFlowNode[]>([])
@@ -108,12 +115,13 @@ export function MapCanvas({
   const [doc, setDoc] = useState<{ id: string; mode: DocumentMode }>()
   const [settingsNodeId, setSettingsNodeId] = useState<string>()
   const [deleteRequestId, setDeleteRequestId] = useState<string>()
+  /** Add menu opened by a click on the empty canvas: where (inside the canvas) and at which flow point. */
+  const [addMenu, setAddMenu] = useState<{ at: { x: number; y: number }; bounds: { width: number; height: number }; flow: { x: number; y: number } }>()
   /** Node whose click menu is open. */
   const [menuNodeId, setMenuNodeId] = useState<string>()
   /** Node to select once it shows up from the database (after creation / on open). */
   const pendingSelection = useRef<string | undefined>(focusNodeId)
   const lastPointerType = useRef<string>('mouse')
-  const lastTap = useRef<{ time: number; x: number; y: number } | undefined>(undefined)
   /** Link to select once it shows up from the database (right after drawing it). */
   const pendingEdgeSelection = useRef<string | undefined>(undefined)
   /** Link just drawn: its label field gets the focus so it can be named right away. */
@@ -287,6 +295,47 @@ export function MapCanvas({
     [connect, addNode, rf],
   )
 
+  /** The idea whose content a node shows: itself, or the original of an alias. */
+  const contentId = useCallback((nodeId: string) => dbNodes?.find((n) => n.id === nodeId)?.aliasOf ?? nodeId, [dbNodes])
+  const contentOf = useCallback(
+    (nodeId: string): IdeaNode | undefined => {
+      const node = dbNodes?.find((n) => n.id === nodeId)
+      return node?.aliasOf ? aliasTargets?.get(node.aliasOf) : node
+    },
+    [dbNodes, aliasTargets],
+  )
+  const exploreNode = useCallback((nodeId: string) => onOpenNode(contentId(nodeId)), [onOpenNode, contentId])
+
+  const openAddMenu = useCallback(
+    (clientX: number, clientY: number) => {
+      const r = wrapperRef.current?.getBoundingClientRect()
+      if (!r) return
+      setMenuNodeId(undefined)
+      setAddMenu({ at: { x: clientX - r.left, y: clientY - r.top }, bounds: { width: r.width, height: r.height }, flow: rf.screenToFlowPosition({ x: clientX, y: clientY }) })
+    },
+    [rf],
+  )
+
+  const createFromMenu = useCallback(
+    (templateId: string) => {
+      if (!addMenu) return
+      setAddMenu(undefined)
+      onTemplateUsed(templateId)
+      void addNode({ x: addMenu.flow.x - DEFAULT_NODE_SIZE.width / 2, y: addMenu.flow.y - 40 }, undefined, templateId)
+    },
+    [addMenu, addNode, onTemplateUsed],
+  )
+
+  const aliasFromMenu = useCallback(
+    async (targetId: string) => {
+      if (!addMenu) return
+      setAddMenu(undefined)
+      const alias = await createAlias({ mapId: map.id, targetId, x: addMenu.flow.x - DEFAULT_NODE_SIZE.width / 2, y: addMenu.flow.y - 40 })
+      if (alias) pendingSelection.current = alias.id
+    },
+    [addMenu, map.id],
+  )
+
   const viewportCenterScreen = useCallback(() => {
     const r = wrapperRef.current?.getBoundingClientRect()
     return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : { x: innerWidth / 2, y: innerHeight / 2 }
@@ -308,7 +357,7 @@ export function MapCanvas({
   // --- Selection helpers
   /**
    * Fits a node in the view, with a margin all around so the links leaving it stay visible, plus
-   * room above for the click menu and on the right for the depth arrows. Zooms out as needed,
+   * room below for the click menu and on the right for the depth arrows. Zooms out as needed,
    * never zooms in past max(current zoom, 1). With `onlyIfNeeded` (keyboard navigation), the
    * view doesn't move when the node already fits.
    */
@@ -320,7 +369,8 @@ export function MapCanvas({
       const rect = { ...node.internals.positionAbsolute, width: node.measured.width, height: node.measured.height ?? 0 }
       const mx = Math.min(96, wrapper.width * 0.12)
       const my = Math.min(96, wrapper.height * 0.1)
-      const area = { left: mx, top: my + 48, right: wrapper.width - mx - 36, bottom: wrapper.height - my }
+      // Room below for the click menu, on the right for the depth arrows.
+      const area = { left: mx, top: my, right: wrapper.width - mx - 36, bottom: wrapper.height - my - 52 }
       const { x: vx, y: vy, zoom: current } = rf.getViewport()
       if (onlyIfNeeded) {
         const left = rect.x * current + vx
@@ -425,9 +475,9 @@ export function MapCanvas({
   const openDocument = useCallback(
     (nodeId: string) => {
       setMenuNodeId(undefined)
-      setDoc({ id: nodeId, mode: locked ? 'read' : 'edit' })
+      setDoc({ id: contentId(nodeId), mode: locked ? 'read' : 'edit' })
     },
-    [locked],
+    [locked, contentId],
   )
 
   const requestDelete = useCallback(
@@ -500,13 +550,14 @@ export function MapCanvas({
         case 'Enter':
           if (selected) {
             event.preventDefault()
-            onOpenNode(selected.id)
+            exploreNode(selected.id)
           }
           break
         case 'Escape':
-          if (menuNodeId) {
+          if (menuNodeId || addMenu) {
             event.preventDefault()
             setMenuNodeId(undefined)
+            setAddMenu(undefined)
           } else if (onNavigateUp) {
             event.preventDefault()
             onNavigateUp()
@@ -533,14 +584,15 @@ export function MapCanvas({
         case 'b':
           if (selected) {
             event.preventDefault()
-            void setBookmarked(selected.id, !selected.data.model.bookmarkedAt)
+            const content = contentOf(selected.id)
+            if (content) void setBookmarked(content.id, !content.bookmarkedAt)
           }
           break
         case 'n': {
           if (locked) break
           event.preventDefault()
           const c = viewportCenterScreen()
-          addNodeAtScreen(c.x, c.y)
+          openAddMenu(c.x - 150, c.y - 120)
           break
         }
         case 'Tab':
@@ -550,16 +602,11 @@ export function MapCanvas({
             void addNode(placeBeside(rect, nodeRects(), DEFAULT_NODE_SIZE), selected.id)
           }
           break
-        default:
-          if (/^[1-9]$/.test(event.key)) {
-            event.preventDefault()
-            onSelectTemplateIndex(Number(event.key) - 1)
-          }
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [nodes, doc, settingsNodeId, rf, selectOnly, nodeRects, viewportCenterScreen, addNode, addNodeAtScreen, onOpenNode, onNavigateUp, onSelectTemplateIndex, locked, menuNodeId, focusNode, openDocument])
+  }, [nodes, doc, settingsNodeId, rf, selectOnly, nodeRects, viewportCenterScreen, addNode, exploreNode, onNavigateUp, locked, menuNodeId, addMenu, focusNode, openDocument, contentOf, openAddMenu])
 
   // --- Derived UI state
   const templatesById = useMemo(() => new Map(templates.map((t) => [t.id, t])), [templates])
@@ -569,6 +616,7 @@ export function MapCanvas({
       timelines: timelines ?? EMPTY_TIMELINES,
       openNode: onOpenNode,
       openSettings: setSettingsNodeId,
+      aliasTargets: aliasTargets ?? EMPTY_TARGETS,
       requestDelete,
       navigateUp: onNavigateUp,
       childMapSizes: childMapSizes ?? new Map(),
@@ -578,13 +626,15 @@ export function MapCanvas({
       followEdge,
       editEdge: (edgeId: string) => (locked ? followEdge(edgeId) : selectEdge(edgeId)),
     }),
-    [templatesById, timelines, onOpenNode, requestDelete, onNavigateUp, childMapSizes, menuNodeId, locked, followEdge, selectEdge],
+    [templatesById, timelines, aliasTargets, onOpenNode, requestDelete, onNavigateUp, childMapSizes, menuNodeId, locked, followEdge, selectEdge],
   )
   const selectedEdges = edges.filter((e) => e.selected)
   const selectedEdge =
     !locked && selectedEdges.length === 1 && !nodes.some((n) => n.selected) ? selectedEdges[0].data?.model : undefined
-  const docNode: IdeaNode | undefined = dbNodes?.find((n) => n.id === doc?.id)
-  const settingsNode: IdeaNode | undefined = dbNodes?.find((n) => n.id === settingsNodeId)
+  // The reader / editor and the settings show originals, which may live on another map (aliases).
+  const docNode: IdeaNode | undefined = dbNodes?.find((n) => n.id === doc?.id) ?? (doc ? aliasTargets?.get(doc.id) : undefined)
+  const settingsNode: IdeaNode | undefined =
+    dbNodes?.find((n) => n.id === settingsNodeId) ?? (settingsNodeId ? aliasTargets?.get(settingsNodeId) : undefined)
   const deleteNode: IdeaNode | undefined = dbNodes?.find((n) => n.id === deleteRequestId)
   const sizeOf = (node: IdeaNode | undefined) => (node?.childMapId ? (childMapSizes?.get(node.childMapId) ?? 0) : 0)
 
@@ -600,25 +650,9 @@ export function MapCanvas({
     <MapContext.Provider value={actions}>
       <div
         ref={wrapperRef}
-        className={cn('h-full w-full', connecting && 'is-connecting')}
-        onDoubleClick={(e) => {
-          // Touch double-taps are handled in onPointerUp: mobile browsers don't reliably emit dblclick.
-          if (lastPointerType.current === 'touch') return
-          if (!locked && (e.target as HTMLElement).classList.contains('react-flow__pane')) addNodeAtScreen(e.clientX, e.clientY)
-        }}
+        className={cn('relative h-full w-full', connecting && 'is-connecting')}
         onPointerDown={(e) => {
           lastPointerType.current = e.pointerType
-        }}
-        onPointerUp={(e) => {
-          if (locked || e.pointerType !== 'touch' || !(e.target as HTMLElement).classList.contains('react-flow__pane')) return
-          const last = lastTap.current
-          const now = e.timeStamp
-          if (last && now - last.time < 350 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 30) {
-            lastTap.current = undefined
-            addNodeAtScreen(e.clientX, e.clientY)
-          } else {
-            lastTap.current = { time: now, x: e.clientX, y: e.clientY }
-          }
         }}
       >
         <ReactFlow<IdeaFlowNode, LinkFlowEdge>
@@ -640,11 +674,21 @@ export function MapCanvas({
           connectionLineStyle={{ stroke: 'var(--sketch-blue)', strokeWidth: 2, strokeDasharray: '6 5' }}
           onEdgeClick={(event, edge) => followEdge(edge.id, { x: event.clientX, y: event.clientY })}
           onMoveEnd={onMoveEnd}
-          onPaneClick={() => setMenuNodeId(undefined)}
+          onPaneClick={(event) => {
+            // A click on the empty canvas closes what is open, or clears the selection; when there
+            // is nothing to close, it opens the add menu (unlocked).
+            const busy = menuNodeId || addMenu || nodes.some((n) => n.selected) || edges.some((e) => e.selected)
+            setMenuNodeId(undefined)
+            setAddMenu(undefined)
+            if (!busy && !locked) openAddMenu(event.clientX, event.clientY)
+          }}
           onNodeDragStart={() => setMenuNodeId(undefined)}
           onMoveStart={(event) => {
-            // Close the menu when the user pans or zooms (not on programmatic moves).
-            if (event) setMenuNodeId(undefined)
+            // Close the menus when the user pans or zooms (not on programmatic moves).
+            if (event) {
+              setMenuNodeId(undefined)
+              setAddMenu(undefined)
+            }
           }}
           onNodeDoubleClick={(_, node) => {
             if (lastPointerType.current !== 'touch') openDocument(node.id)
@@ -695,8 +739,8 @@ export function MapCanvas({
             <Panel position="top-right">
               <EdgePanel
                 edge={selectedEdge}
-                sourceTitle={dbNodes.find((n) => n.id === selectedEdge.source)?.title}
-                targetTitle={dbNodes.find((n) => n.id === selectedEdge.target)?.title}
+                sourceTitle={contentOf(selectedEdge.source)?.title}
+                targetTitle={contentOf(selectedEdge.target)?.title}
                 autoFocusLabel={selectedEdge.id === freshEdgeId}
               />
             </Panel>
@@ -708,14 +752,25 @@ export function MapCanvas({
               ) : (
                 <>
                   <span className="max-md:hidden">
-                    Double-clique ou appuie sur <kbd className="rounded border px-1.5 font-sans text-sm">N</kbd> pour créer une idée
+                    Clique sur le fond (ou appuie sur <kbd className="rounded border px-1.5 font-sans text-sm">N</kbd>) pour ajouter une idée
                   </span>
-                  <span className="md:hidden">Touche deux fois le fond pour créer une idée</span>
+                  <span className="md:hidden">Touche le fond pour ajouter une idée</span>
                 </>
               )}
             </Panel>
           )}
         </ReactFlow>
+        {addMenu && !locked && (
+          <AddIdeaMenu
+            at={addMenu.at}
+            bounds={addMenu.bounds}
+            templates={templates}
+            reusable={reusable ?? []}
+            onCreate={createFromMenu}
+            onAlias={(id) => void aliasFromMenu(id)}
+            onClose={() => setAddMenu(undefined)}
+          />
+        )}
       </div>
       <IdeaDocument
         node={docNode}

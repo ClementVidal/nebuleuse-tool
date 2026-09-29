@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { TimelineEntry } from '@/db/hooks'
-import type { NodeTemplate } from '@/db/types'
+import type { IdeaNode, NodeTemplate } from '@/db/types'
 
 export interface MapActions {
   templates: Map<string, NodeTemplate>
@@ -9,6 +9,8 @@ export interface MapActions {
   /** Enter the idea's own map ("Explorer l'idée"). */
   openNode: (nodeId: string) => void
   openSettings: (nodeId: string) => void
+  /** Originals of the aliases on this map, by id. */
+  aliasTargets: Map<string, IdeaNode>
   /** Delete an idea (asks for confirmation when its map has content). */
   requestDelete: (nodeId: string) => void
   /** Go to the parent map; undefined on a project's root map. */

@@ -1,5 +1,5 @@
 import { Handle, NodeResizer, NodeToolbar, Position, type Node, type NodeProps, type OnResizeEnd } from '@xyflow/react'
-import { ArrowDown, ArrowUp, Bookmark, BringToFront, CornerDownRight, Ellipsis, Plus, SendToBack, Settings2, Sparkles, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Bookmark, BringToFront, CornerDownRight, Ellipsis, Link2, Plus, SendToBack, Settings2, Sparkles, Trash2 } from 'lucide-react'
 import { memo, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { restack, updateNode } from '@/db/actions'
@@ -11,20 +11,27 @@ import { cn } from '@/lib/utils'
 import { useMapActions } from './map-context'
 import { markdownToHtml } from './markdown'
 import { StatusDot } from './status'
+import { useGoToNode } from './use-go-to-node'
 import { IdeaTimelines } from './timeline'
 import { nodeBoxClass, nodeBoxStyle, templateStyle } from './node-style'
 
 export type IdeaFlowNode = Node<{ model: IdeaNodeModel }, 'idea'>
 
 const LINK_HANDLES = [
+  { position: Position.Top, id: 'top' },
   { position: Position.Right, id: 'right' },
-  { position: Position.Bottom, id: 'bottom' },
   { position: Position.Left, id: 'left' },
 ]
 
 function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<IdeaFlowNode>) {
-  const { model } = data
-  const { templates, openNode, openSettings, requestDelete, navigateUp, childMapSizes, menuNodeId, locked, closeMenu } = useMapActions()
+  // `own` is this node on the canvas (geometry, stacking, links); `model` is the idea it shows —
+  // itself, or the original when it is an alias.
+  const own = data.model
+  const { templates, aliasTargets, openNode, openSettings, requestDelete, navigateUp, childMapSizes, menuNodeId, locked, closeMenu } = useMapActions()
+  const original = own.aliasOf ? aliasTargets.get(own.aliasOf) : undefined
+  const model = original ?? own
+  const isAlias = !!own.aliasOf
+  const goToNode = useGoToNode()
   const template = templates.get(model.templateId)
   const style = templateStyle(template)
   const box = nodeBoxStyle(style)
@@ -33,8 +40,8 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
   // Must stay stable: React Flow rebuilds its drag handler when this changes, which drops an
   // ongoing touch gesture (resizing on mobile froze after the first move).
   const onResizeEnd: OnResizeEnd = useCallback(
-    (_, { x, y, width, height }) => void updateNode(model.id, { x, y, width, height }),
-    [model.id],
+    (_, { x, y, width, height }) => void updateNode(own.id, { x, y, width, height }),
+    [own.id],
   )
 
   // The node is a miniature of the idea's page: same elements, same order (title, meta line,
@@ -89,11 +96,16 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
                 · <Sparkles className="size-3" /> Claude
               </span>
             )}
+            {isAlias && (
+              <span className="flex shrink-0 items-center gap-0.5 normal-case tracking-normal" title="Alias : une vue de l’idée d’origine, modifiée partout à la fois">
+                · <Link2 className="size-3" /> Alias
+              </span>
+            )}
             {model.bookmarkedAt && <Bookmark className="ml-auto size-3.5 shrink-0 fill-current" aria-label="Favori" />}
           </div>
         )}
         <div className="line-clamp-3 shrink-0 text-[16px] leading-[1.2] font-bold tracking-[-0.015em] text-balance">
-          {model.title || 'Sans titre'}
+          {isAlias && !original ? 'Idée introuvable' : model.title || 'Sans titre'}
         </div>
 
         {/* Meta line, as under the page title: status, then number fields. */}
@@ -159,7 +171,7 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
         </button>
       </div>
 
-      <NodeToolbar isVisible={menuNodeId === model.id} position={Position.Top} offset={10}>
+      <NodeToolbar isVisible={menuNodeId === own.id} position={Position.Bottom} offset={12}>
         <div
           className="nodrag nopan nowheel flex items-center gap-0.5 rounded-full border bg-popover p-1 text-popover-foreground shadow-md"
           // Menu clicks must not reach the node (whose click handler reopens the menu).
@@ -195,10 +207,10 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
                 className="h-8 text-destructive hover:text-destructive"
                 onClick={() => {
                   closeMenu()
-                  requestDelete(model.id)
+                  requestDelete(own.id)
                 }}
               >
-                <Trash2 /> Supprimer
+                <Trash2 /> {isAlias ? 'Retirer l’alias' : 'Supprimer'}
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -207,10 +219,20 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="nodrag nopan w-56" onClick={(e) => e.stopPropagation()}>
+                  {original && (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        closeMenu()
+                        goToNode(original)
+                      }}
+                    >
+                      <Link2 /> Aller à l’idée d’origine
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem
                     onSelect={() => {
                       closeMenu()
-                      void restack(model.id, 'front')
+                      void restack(own.id, 'front')
                     }}
                   >
                     <BringToFront /> Premier plan
@@ -219,7 +241,7 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
                   <DropdownMenuItem
                     onSelect={() => {
                       closeMenu()
-                      void restack(model.id, 'back')
+                      void restack(own.id, 'back')
                     }}
                   >
                     <SendToBack /> Arrière-plan
@@ -233,7 +255,7 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
       </NodeToolbar>
 
       {/* Link grips: drag one onto another idea to link them, or onto empty space to create a
-          linked idea. None on top, where the click menu sits (edges float anyway). */}
+          linked idea. None at the bottom, where the click menu opens (edges float anyway). */}
       {LINK_HANDLES.map(({ position, id }) => (
         <Handle key={id} type="source" position={position} id={id} className="link-grip" title="Glisser pour relier">
           <Plus />

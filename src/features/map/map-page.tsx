@@ -15,11 +15,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
 import { Separator } from '@/components/ui/separator'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ensureChildMap } from '@/db/actions'
 import { redo, undo } from '@/db/history'
 import { useBreadcrumb, useHistoryState, useMap, useProject, useTemplates } from '@/db/hooks'
-import { colorCss } from '@/db/palette'
 import { setCommandPaletteOpen } from '@/features/shell/palette-store'
 import { KeyboardHelp } from './keyboard-help'
 import { MapCanvas } from './map-canvas'
@@ -37,6 +35,7 @@ export function MapPage({ projectId, mapId, focusNodeId }: MapPageProps) {
   const templates = useTemplates(projectId)
   const breadcrumb = useBreadcrumb(project, mapId)
   const history = useHistoryState(projectId)
+  /** Template of the last idea created from the canvas (reused by Tab, "linked idea"). */
   const [chosenTemplateId, setActiveTemplateId] = useState<string>()
   const activeTemplateId = templates?.some((t) => t.id === chosenTemplateId) ? chosenTemplateId : templates?.[0]?.id
 
@@ -62,13 +61,6 @@ export function MapPage({ projectId, mapId, focusNodeId }: MapPageProps) {
     void navigate({ to: '/projects/$projectId/maps/$mapId', params: { projectId, mapId }, search: {}, replace: true })
   }, [navigate, projectId, mapId])
 
-  const selectTemplateIndex = useCallback(
-    (index: number) => {
-      const template = templates?.[index]
-      if (template) setActiveTemplateId(template.id)
-    },
-    [templates],
-  )
 
   if (project === null || map === null) return <Navigate to="/" />
   if (!project || !map || !templates || !breadcrumb) return null
@@ -107,21 +99,6 @@ export function MapPage({ projectId, mapId, focusNodeId }: MapPageProps) {
           </BreadcrumbList>
         </Breadcrumb>
 
-        <ToggleGroup
-          type="single"
-          size="sm"
-          value={activeTemplateId}
-          onValueChange={(v) => v && setActiveTemplateId(v)}
-          aria-label="Template des nouvelles idées"
-          className="hidden sm:flex"
-        >
-          {templates.map((t, i) => (
-            <ToggleGroupItem key={t.id} value={t.id} title={`${t.name} (${i + 1})`} className="gap-1.5 px-2.5">
-              <span className="size-2.5 rounded-full border" style={{ background: colorCss(t.style.color) }} />
-              {t.name}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
         <Button
           variant="ghost"
           size="icon"
@@ -177,7 +154,7 @@ export function MapPage({ projectId, mapId, focusNodeId }: MapPageProps) {
             focusNodeId={focusNodeId}
             onOpenNode={openNode}
             onNavigateUp={parentNode ? navigateUp : undefined}
-            onSelectTemplateIndex={selectTemplateIndex}
+            onTemplateUsed={setActiveTemplateId}
             onFocusConsumed={dropFocusFromUrl}
             mapLabel={breadcrumb.at(-1)?.label ?? project.name}
           />

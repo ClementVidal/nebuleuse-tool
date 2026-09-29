@@ -79,7 +79,8 @@ export function useProjectNodes(project: Project | null | undefined, enabled: bo
     ])
     const titles = new Map(nodes.map((n) => [n.id, n.title]))
     const mapOwner = new Map(maps.map((m) => [m.id, m.parentNodeId]))
-    return nodes.map((node) => {
+    // Aliases hold no content of their own: search finds their original.
+    return nodes.filter((node) => !node.aliasOf).map((node) => {
       const owner = mapOwner.get(node.mapId)
       return { node, location: owner ? (titles.get(owner) ?? '…') : project.name }
     })
@@ -143,6 +144,7 @@ export function useTimelines(projectId: string) {
     const templatesById = new Map(templates.map((t) => [t.id, t]))
     const timelines = new Map<string, TimelineEntry[]>()
     for (const node of nodes) {
+      if (node.aliasOf) continue // an alias shows its original's dates, already counted
       const template = templatesById.get(node.templateId)
       if (!template) continue
       for (const field of template.fields) {
@@ -168,4 +170,43 @@ export function useTimelines(projectId: string) {
     }
     return timelines
   }, [projectId])
+}
+
+/** The originals of the aliases among `nodes`, by id (they may live on other maps). */
+export function useAliasTargets(nodes: IdeaNode[] | undefined) {
+  const ids = [...new Set((nodes ?? []).flatMap((n) => (n.aliasOf ? [n.aliasOf] : [])))]
+  const key = ids.join(',')
+  return useLiveQuery(async () => {
+    const targets = new Map<string, IdeaNode>()
+    for (const node of await db.nodes.bulkGet(ids)) if (node) targets.set(node.id, node)
+    return targets
+  }, [key])
+}
+
+export interface ReusableNode {
+  node: IdeaNode
+  /** Label of the map the idea lives in. */
+  location: string
+}
+
+/** Ideas of a project that can be placed as aliases (the "Réutilisable ailleurs" setting). */
+export function useReusableNodes(projectId: string) {
+  return useLiveQuery(async (): Promise<ReusableNode[]> => {
+    const nodes = (await db.nodes.where({ projectId }).toArray()).filter((n) => n.reusable && !n.aliasOf)
+    const maps = await db.maps.bulkGet([...new Set(nodes.map((n) => n.mapId))])
+    const owners = new Map((await db.nodes.bulkGet(maps.flatMap((m) => (m?.parentNodeId ? [m.parentNodeId] : [])))).flatMap((n) => (n ? [[n.id, n.title]] : [])))
+    const project = await db.projects.get(projectId)
+    const ownerOf = new Map(maps.flatMap((m) => (m ? [[m.id, m.parentNodeId]] : [])))
+    return nodes
+      .map((node) => {
+        const owner = ownerOf.get(node.mapId)
+        return { node, location: owner ? (owners.get(owner) ?? '…') : (project?.name ?? '') }
+      })
+      .sort((a, b) => a.node.title.localeCompare(b.node.title, 'fr'))
+  }, [projectId])
+}
+
+/** Number of aliases of an idea. */
+export function useAliasCount(nodeId: string | undefined) {
+  return useLiveQuery(async () => (nodeId ? db.nodes.where('aliasOf').equals(nodeId).count() : 0), [nodeId])
 }

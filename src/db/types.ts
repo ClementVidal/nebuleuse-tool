@@ -91,6 +91,13 @@ export interface IdeaNode {
   author?: 'claude'
   /** MCP call that created or last changed the idea. */
   batchId?: string
+  /** Can be placed in other maps as an alias (see aliasOf). */
+  reusable?: boolean
+  /**
+   * Alias: this record only holds a place on its map (position, size, links); title, content,
+   * template and sub-map are those of the original idea, so editing either updates both.
+   */
+  aliasOf?: string
 }
 
 export type IdeaStatus = 'draft' | 'ready'

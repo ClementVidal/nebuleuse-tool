@@ -17,9 +17,8 @@ const SHORTCUTS: [string, string][] = [
   ['Double-clic idée', 'Lire (verrouillé) · éditer (déverrouillé)'],
   ['Clic lien', "Aller à l'idée à l'autre bout"],
   ['Glisser un +', 'Relier à une idée, ou créer une idée reliée'],
-  ['N · double-clic fond', 'Nouvelle idée (déverrouillé)'],
+  ['Clic fond · N', 'Menu d’ajout : template ou alias (déverrouillé)'],
   ['Tab', 'Nouvelle idée reliée (déverrouillé)'],
-  ['1 … 9', 'Choisir le template de création'],
   ['Suppr', 'Supprimer la sélection (déverrouillé)'],
   ['Ctrl ⇧ ] · Ctrl ⇧ [', 'Premier plan · arrière-plan (déverrouillé)'],
 ]

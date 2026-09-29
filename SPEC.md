@@ -25,6 +25,17 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 - Position et dimensions libres (redimensionnable).
 - Tout nœud est **navigable** : l'ouvrir crée (à la demande) sa carte enfant.
 
+### Alias
+- Réglage d'une idée **« Réutilisable ailleurs »** : l'idée est proposée dans le menu d'ajout de toutes
+  les cartes du projet. Le panneau indique combien d'alias existent.
+- Un **alias** est la même idée placée sur une autre carte (ou ailleurs sur la même) : titre, texte,
+  champs, template, statut, sous-carte et favori sont ceux de l'idée d'origine ; seuls la position,
+  la taille, l'ordre et les liens sont propres à l'alias. Modifier un alias (éditeur, réglages)
+  modifie l'idée d'origine, donc tous ses alias.
+- Sur le canvas, l'alias porte la mention « Alias » ; son menu « … » propose **Aller à l'idée d'origine**.
+- Supprimer l'alias ne retire que l'alias ; supprimer l'idée d'origine supprime aussi ses alias.
+- Les alias n'apparaissent pas en double dans la recherche, la palette ni les frises.
+
 ### Template (par projet)
 - Liste de templates propre à chaque projet : **ajouter, renommer, éditer, supprimer**.
 - Templates créés par défaut avec un nouveau projet : `Note`, `Réflexion`, `Research`.
@@ -138,13 +149,18 @@ Mémorisé dans le navigateur ; raccourci `L`. Double-clic et double-tap sont é
 
 ### Souris et tactile
 - Clic / tap sur une idée : la vue s'ajuste sur l'idée (zoom arrière si besoin), avec une marge
-  tout autour pour voir les liens qui en partent.
+  tout autour pour voir les liens qui en partent. Son menu s'affiche **sous** l'idée.
 - Clic / tap sur un lien : va à l'idée à l'autre bout (celle qui n'est pas sélectionnée, sinon la
   plus éloignée du clic), sélectionnée et ajustée de la même façon.
 
 Déverrouillé :
-- Double-clic sur le fond : créer une idée (l'éditeur s'ouvre).
-- Poignées **+** autour de l'idée survolée ou sélectionnée (droite, bas, gauche) : les glisser
+- Clic sur le fond (rien d'ouvert ni de sélectionné, sinon le clic ferme / désélectionne d'abord) :
+  **menu d'ajout** à cet endroit, avec une recherche rapide (`N` l'ouvre au centre de la vue) :
+  - **Nouvelle idée** : un item par template ; l'idée est créée à cet endroit, titre prêt à être saisi ;
+  - **Alias d'une idée** : les idées « Réutilisables ailleurs » du projet (avec la carte où elles
+    vivent) ; en choisir une place un alias à cet endroit.
+  La barre d'outils n'a plus de sélecteur de template ; le dernier template choisi sert aussi à `Tab`.
+- Poignées **+** autour de l'idée survolée ou sélectionnée (haut, droite, gauche) : les glisser
   - sur une autre idée : crée un lien, sélectionné, son nom prêt à être modifié ;
   - dans le vide : crée une idée reliée à cet endroit (l'éditeur s'ouvre).
 - Clic sur le nom d'un lien (ou sur son point s'il n'a pas de nom) : l'éditer (nom, flèches,
@@ -163,7 +179,7 @@ Déverrouillé :
 | `Entrée` | explorer l'idée sélectionnée (entrer dans sa carte) |
 | `Échap` / `Alt+↑` | remonter à la carte parente |
 | `Espace` / `E` / `F2` | lire (verrouillé) ou éditer (déverrouillé) l'idée sélectionnée |
-| `N` | nouvelle idée au centre de la vue (déverrouillé) |
+| `N` | menu d'ajout (template ou alias) au centre de la vue (déverrouillé) |
 | `Tab` | nouvelle idée reliée à la sélection (déverrouillé) |
 | `F` | centrer la vue sur la sélection |
 | `B` | ajouter / retirer la sélection des favoris |

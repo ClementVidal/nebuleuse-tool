@@ -161,9 +161,33 @@ export async function updateNodePositions(positions: { id: string; x: number; y:
 }
 
 /** Deletes nodes, their edges and, recursively, the maps they open. */
+/** Places an alias of an idea on a map (the original, if given an alias). */
+export async function createAlias(input: { mapId: string; targetId: string; x: number; y: number }): Promise<IdeaNode | undefined> {
+  let target = await db.nodes.get(input.targetId)
+  if (target?.aliasOf) target = await db.nodes.get(target.aliasOf)
+  if (!target) return undefined
+  const alias: IdeaNode = {
+    id: nanoid(),
+    projectId: target.projectId,
+    mapId: input.mapId,
+    templateId: target.templateId,
+    title: '',
+    values: {},
+    x: input.x,
+    y: input.y,
+    width: target.width,
+    height: target.height,
+    childMapId: null,
+    aliasOf: target.id,
+  }
+  await record(() => db.nodes.add(alias))
+  return alias
+}
+
 export async function deleteNodes(nodeIds: string[]) {
   await record(async () => {
-    let queue = [...nodeIds]
+    // Deleting an idea removes its aliases too (deleting an alias only removes the alias).
+    let queue = [...nodeIds, ...(await db.nodes.where('aliasOf').anyOf(nodeIds).primaryKeys())]
     while (queue.length > 0) {
       const nodes = await db.nodes.bulkGet(queue)
       const childMapIds = nodes.flatMap((n) => (n?.childMapId ? [n.childMapId] : []))
@@ -172,6 +196,7 @@ export async function deleteNodes(nodeIds: string[]) {
       await db.nodes.bulkDelete(queue)
       await db.maps.bulkDelete(childMapIds)
       queue = childMapIds.length ? await db.nodes.where('mapId').anyOf(childMapIds).primaryKeys() : []
+      if (queue.length) queue.push(...(await db.nodes.where('aliasOf').anyOf(queue).primaryKeys()))
       if (childMapIds.length) await db.edges.where('mapId').anyOf(childMapIds).delete()
     }
   })

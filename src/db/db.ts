@@ -67,6 +67,9 @@ db.version(3).stores({}).upgrade(async (tx) => {
 // v4: sync with the server — outbox of local changes, sync cursor.
 db.version(4).stores({ outbox: 'key', syncMeta: 'key' })
 
+// v5: aliases (a node standing for another one), found by the idea they point to.
+db.version(5).stores({ nodes: 'id, projectId, mapId, templateId, aliasOf' })
+
 // ---------------------------------------------------------------- connection status
 
 /**

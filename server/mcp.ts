@@ -37,6 +37,8 @@ Méthode :
   « illustre »…).
 - Les idées que tu crées sont marquées « écrites par Claude » et en statut Brouillon ; l'utilisateur les passe à
   Prêt en les relisant. Pour corriger ou compléter, utilise update_map (modifications, suppressions, liens).
+- Une idée marquée "aliasOf" est un alias : la même idée placée sur une autre carte. La modifier modifie
+  l'originale (partout) ; la supprimer ne retire que l'alias.
 - Écris dans la langue de l'utilisateur (français par défaut).`
 
 type Json = Record<string, unknown>

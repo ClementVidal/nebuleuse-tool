@@ -9,6 +9,8 @@ import { setBookmarked, updateNode, updateNodeValue, updateTemplate } from '@/db
 import { colorCss, COLORS } from '@/db/palette'
 import { DatePicker, DateRangePicker } from '@/components/date-picker'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import { useAliasCount } from '@/db/hooks'
 import { fieldValue, formatFieldValue, isDateRange, isTimelineField } from '@/db/fields'
 import type { IdeaNode, NodeStyle, NodeTemplate, TemplateField } from '@/db/types'
 import { cn } from '@/lib/utils'
@@ -130,6 +132,8 @@ function Settings({ node, templates }: { node: IdeaNode; templates: NodeTemplate
           </div>
         )}
 
+        <ReusableSetting node={node} />
+
         <Separator />
 
         <Button
@@ -142,6 +146,28 @@ function Settings({ node, templates }: { node: IdeaNode; templates: NodeTemplate
         </Button>
       </div>
     </>
+  )
+}
+
+/** « Réutilisable ailleurs »: the idea can be placed as an alias on other maps, from the add menu. */
+function ReusableSetting({ node }: { node: IdeaNode }) {
+  const aliases = useAliasCount(node.id) ?? 0
+  const id = `reusable-${node.id}`
+  return (
+    <div className="flex items-start gap-3">
+      <Switch id={id} checked={!!node.reusable} onCheckedChange={(v) => updateNode(node.id, { reusable: v || undefined })} className="mt-0.5" />
+      <label htmlFor={id} className="grid gap-0.5 text-sm">
+        <span className="font-medium">Réutilisable ailleurs</span>
+        <span className="text-xs text-muted-foreground">
+          Proposée dans le menu d’ajout de toutes les cartes du projet, sous forme d’alias. Modifier l’idée modifie tous ses alias.
+        </span>
+        {aliases > 0 && (
+          <span className="text-xs font-medium text-muted-foreground">
+            Présente ailleurs {aliases} fois{!node.reusable && ' (les alias existants restent)'}
+          </span>
+        )}
+      </label>
+    </div>
   )
 }
 
