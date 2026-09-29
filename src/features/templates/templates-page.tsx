@@ -1,6 +1,6 @@
 import { Link, Navigate } from '@tanstack/react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowDown, ArrowLeft, ArrowUp, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import { useState } from 'react'
 import { ColorPicker, EnumPicker, StrokeWidthPicker } from '@/components/style-pickers'
@@ -10,19 +10,14 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { createTemplate, countTemplateUsage, deleteTemplate, updateTemplate } from '@/db/actions'
 import { useProject, useTemplates } from '@/db/hooks'
 import { colorCss, COLORS } from '@/db/palette'
-import type { FieldType, NodeStyle, NodeTemplate, TemplateField } from '@/db/types'
+import type { NodeStyle, NodeTemplate, TemplateField } from '@/db/types'
 import { nodeBoxClass, nodeBoxStyle, templateStyle } from '@/features/map/node-style'
+import { FieldEditor } from './field-editor'
 import { cn } from '@/lib/utils'
 
-const FIELD_TYPES: { value: FieldType; label: string }[] = [
-  { value: 'richtext', label: 'Texte riche' },
-  { value: 'date', label: 'Date' },
-  { value: 'number', label: 'Nombre' },
-]
 
 export function TemplatesPage({ projectId }: { projectId: string }) {
   const project = useProject(projectId)
@@ -72,14 +67,22 @@ export function TemplatesPage({ projectId }: { projectId: string }) {
           </Button>
         </nav>
 
-        {selected && <TemplateEditor key={selected.id} template={selected} />}
+        {selected && <TemplateEditor key={selected.id} template={selected} timelineNames={timelineNames(templates)} />}
       </main>
     </div>
   )
 }
 
-function TemplateEditor({ template }: { template: NodeTemplate }) {
+/** Timeline names used by the project's fields, suggested when naming a timeline. */
+function timelineNames(templates: NodeTemplate[]): string[] {
+  const names = new Map<string, string>()
+  for (const t of templates) for (const f of t.fields) if (f.timelineName?.trim()) names.set(f.timelineName.trim().toLowerCase(), f.timelineName.trim())
+  return [...names.values()].sort((a, b) => a.localeCompare(b, 'fr'))
+}
+
+function TemplateEditor({ template, timelineNames }: { template: NodeTemplate; timelineNames: string[] }) {
   const usage = useLiveQuery(() => countTemplateUsage(template.id), [template.id])
+  const [addedFieldId, setAddedFieldId] = useState<string>()
   const style = templateStyle(template)
   const setStyle = (changes: Partial<NodeStyle>) => updateTemplate(template.id, { style: { ...style, ...changes } })
   const setFields = (fields: TemplateField[], coalesceKey?: string) => updateTemplate(template.id, { fields }, { coalesceKey })
@@ -156,55 +159,32 @@ function TemplateEditor({ template }: { template: NodeTemplate }) {
         <CardContent className="grid gap-3">
           <p className="text-sm text-muted-foreground">Chaque idée a toujours un titre. Ajoute ici les champs propres à ce template.</p>
           {template.fields.map((field, index) => (
-            <div key={field.id} className="flex flex-wrap items-center gap-2 border-b pb-3 last:border-b-0 sm:border-b-0 sm:pb-0">
-              <Input
-                className="w-full sm:w-auto sm:min-w-40 sm:flex-1"
-                aria-label="Nom du champ"
-                defaultValue={field.label}
-                onChange={(e) => updateField(field.id, { label: e.target.value }, `field-label:${field.id}`)}
-              />
-              <Select value={field.type} onValueChange={(type) => updateField(field.id, { type: type as FieldType })}>
-                <SelectTrigger className="flex-1 sm:w-36 sm:flex-none" aria-label="Type du champ">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FIELD_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex">
-                <Button variant="ghost" size="icon" aria-label="Monter" disabled={index === 0} onClick={() => moveField(index, -1)}>
-                  <ArrowUp />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Descendre"
-                  disabled={index === template.fields.length - 1}
-                  onClick={() => moveField(index, 1)}
-                >
-                  <ArrowDown />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Supprimer le champ"
-                  className="text-destructive"
-                  onClick={() => setFields(template.fields.filter((f) => f.id !== field.id))}
-                >
-                  <Trash2 />
-                </Button>
-              </div>
-            </div>
+            <FieldEditor
+              key={field.id}
+              field={field}
+              index={index}
+              count={template.fields.length}
+              timelineListId="timeline-names"
+              defaultOpen={field.id === addedFieldId}
+              onChange={(changes, coalesceKey) => updateField(field.id, changes, coalesceKey)}
+              onMove={(delta) => moveField(index, delta)}
+              onDelete={() => setFields(template.fields.filter((f) => f.id !== field.id))}
+            />
           ))}
+          <datalist id="timeline-names">
+            {timelineNames.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
           <Button
             variant="outline"
             size="sm"
             className="justify-self-start"
-            onClick={() => setFields([...template.fields, { id: nanoid(), label: 'Nouveau champ', type: 'richtext' }])}
+            onClick={() => {
+              const id = nanoid()
+              setAddedFieldId(id)
+              void setFields([...template.fields, { id, label: 'Nouveau champ', type: 'richtext' }])
+            }}
           >
             <Plus /> Ajouter un champ
           </Button>

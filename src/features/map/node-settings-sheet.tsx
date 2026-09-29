@@ -5,11 +5,15 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { setBookmarked, updateNode, updateTemplate } from '@/db/actions'
+import { setBookmarked, updateNode, updateNodeValue, updateTemplate } from '@/db/actions'
 import { colorCss, COLORS } from '@/db/palette'
-import type { IdeaNode, NodeStyle, NodeTemplate } from '@/db/types'
+import { DatePicker, DateRangePicker } from '@/components/date-picker'
+import { Badge } from '@/components/ui/badge'
+import { fieldValue, formatFieldValue, isDateRange, isTimelineField } from '@/db/fields'
+import type { IdeaNode, NodeStyle, NodeTemplate, TemplateField } from '@/db/types'
 import { cn } from '@/lib/utils'
 import { nodeBoxClass, nodeBoxStyle, templateStyle } from './node-style'
+import { IdeaTimelines } from './timeline'
 
 interface NodeSettingsSheetProps {
   node: IdeaNode | undefined
@@ -111,6 +115,21 @@ function Settings({ node, templates }: { node: IdeaNode; templates: NodeTemplate
           </div>
         )}
 
+        {template && template.fields.some(isTimelineField) && (
+          <div className="grid gap-5">
+            <div>
+              <div className="text-sm font-medium">Dates</div>
+              <p className="text-xs text-muted-foreground">Placées sur la frise de l’idée, avec les autres dates de la même frise.</p>
+            </div>
+            {template.fields.filter(isTimelineField).map((field) => (
+              <DateFieldSetting key={field.id} node={node} field={field} />
+            ))}
+            <div className="grid gap-4 rounded-lg border px-3 py-3 empty:hidden">
+              <IdeaTimelines node={node} template={template} accent={colorCss(style.color)} />
+            </div>
+          </div>
+        )}
+
         <Separator />
 
         <Button
@@ -123,5 +142,27 @@ function Settings({ node, templates }: { node: IdeaNode; templates: NodeTemplate
         </Button>
       </div>
     </>
+  )
+}
+
+/** A date / period of the idea: calendar picker, or the fixed value when read-only. */
+function DateFieldSetting({ node, field }: { node: IdeaNode; field: TemplateField }) {
+  const value = fieldValue(node, field)
+  const id = `setting-${field.id}`
+  return (
+    <div className="grid gap-2">
+      <div className="flex items-center gap-2">
+        <Label htmlFor={id}>{field.label}</Label>
+        {field.readOnly && <Badge variant="secondary">Lecture seule</Badge>}
+      </div>
+      {field.description && <p className="-mt-1 text-xs text-muted-foreground">{field.description}</p>}
+      {field.readOnly ? (
+        <p className="text-sm">{formatFieldValue(field, value) || '—'}</p>
+      ) : field.type === 'date' ? (
+        <DatePicker id={id} value={typeof value === 'string' ? value : null} onChange={(v) => updateNodeValue(node.id, field.id, v)} />
+      ) : (
+        <DateRangePicker id={id} value={isDateRange(value) ? value : null} onChange={(v) => updateNodeValue(node.id, field.id, v)} />
+      )}
+    </div>
   )
 }

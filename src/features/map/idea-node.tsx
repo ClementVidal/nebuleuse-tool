@@ -3,10 +3,13 @@ import { ArrowDown, ArrowUp, Bookmark, CornerDownRight, Plus, Settings2, Trash2 
 import { memo, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { updateNode } from '@/db/actions'
+import { fieldValue, formatFieldValue, isEmptyValue, isTimelineField } from '@/db/fields'
+import { colorCss } from '@/db/palette'
 import type { IdeaNode as IdeaNodeModel } from '@/db/types'
 import { cn } from '@/lib/utils'
 import { useMapActions } from './map-context'
 import { markdownToHtml } from './markdown'
+import { IdeaTimelines } from './timeline'
 import { nodeBoxClass, nodeBoxStyle, nodeTitleColor, templateStyle } from './node-style'
 
 export type IdeaFlowNode = Node<{ model: IdeaNodeModel }, 'idea'>
@@ -38,13 +41,13 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
   const content = useMemo(() => {
     if (!template) return []
     return template.fields.flatMap((field): NodeContent[] => {
-      const value = model.values[field.id]
-      if (value === null || value === undefined || value === '') return []
+      if (field.showOnNode === false || isTimelineField(field)) return []
+      const value = fieldValue(model, field)
+      if (isEmptyValue(value)) return []
       if (field.type === 'richtext') return [{ id: field.id, html: markdownToHtml(String(value)) }]
-      const text = field.type === 'date' ? new Date(String(value)).toLocaleDateString('fr-FR') : String(value)
-      return [{ id: field.id, meta: `${field.label} : ${text}` }]
+      return [{ id: field.id, meta: `${field.label} : ${formatFieldValue(field, value)}` }]
     })
-  }, [template, model.values])
+  }, [template, model])
 
   return (
     <div className="group relative" style={{ width, height }}>
@@ -91,6 +94,7 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
             )}
           </div>
         )}
+        <IdeaTimelines node={model} template={template} accent={colorCss(style.color)} onlyVisibleOnNode className="shrink-0" />
         {template && <div className="mt-auto shrink-0 pt-1 text-[11px] uppercase tracking-wide opacity-50">{template.name}</div>}
       </div>
 

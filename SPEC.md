@@ -36,8 +36,13 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
     - contour plein ou pointillé ;
     - **forme** : carte (bordure, fond atténué) ou post-it (fond plus soutenu, sans bordure,
       ombre, coin plié) — le template « Note » est un post-it par défaut ;
-  - une liste ordonnée de **champs** : `{ id, label, type }` avec
-    `type ∈ { richtext, date, number }`.
+  - une liste ordonnée de **champs**. Chaque champ a :
+    - un **nom** et un **type** : texte riche, nombre, **date**, **période** (début → fin) ;
+    - une **description** (aide affichée à la saisie) ;
+    - **visible sur l'idée** (affiché sur la carte, pas seulement dans l'éditeur ; oui par défaut) ;
+    - une **valeur par défaut** (donnée aux nouvelles idées) ;
+    - **lecture seule** : la valeur ne se modifie pas sur l'idée, c'est toujours celle du template ;
+    - pour les dates et périodes, un nom de **frise** (texte libre, suggestions des frises existantes).
 - Un template utilisé par au moins un nœud ne peut pas être supprimé (v1).
 - Supprimer un champ n'efface pas les valeurs déjà saisies (elles sont ignorées).
 
@@ -55,6 +60,16 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 - Palette limitée partagée par les nœuds et les liens (voir `src/db/palette.ts`).
 - Interface autour du canvas : composants shadcn/ui standard, thème clair / sombre.
 - Langue de l'interface : français.
+
+### Dates, périodes et frises
+- Les dates et périodes se choisissent dans les **Réglages** de l'idée, avec un calendrier
+  (mois / année en listes déroulantes pour aller vite ; une période = début puis fin).
+- Elles s'affichent sous forme de **frise chronologique** : sur l'idée (si visible), dans le lecteur
+  (grand format) et dans les réglages.
+- Toutes les dates et périodes du projet dont les champs partagent un même **nom de frise**
+  s'affichent ensemble : celles de l'idée au premier plan (date = curseur, période = barre avec
+  deux curseurs), celles des autres idées en arrière-plan (survol : titre et date). Un champ sans
+  nom de frise a sa propre frise. L'axe s'adapte à l'étendue (années, mois ou jours).
 
 ## Lecture et édition
 

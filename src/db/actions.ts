@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid'
+import { defaultValues } from './fields'
 import { db } from './db'
 import { DEFAULT_EDGE, DEFAULT_NODE_SIZE, DEFAULT_NODE_STYLE, defaultTemplates } from './defaults'
 import { patchSnapshots, record, type RecordOptions } from './history'
@@ -108,10 +109,11 @@ export async function ensureChildMap(nodeId: string): Promise<string> {
 export async function createNode(
   input: Pick<IdeaNode, 'projectId' | 'mapId' | 'templateId' | 'x' | 'y'> & Partial<Pick<IdeaNode, 'title'>>,
 ): Promise<IdeaNode> {
+  const template = await db.templates.get(input.templateId)
   const node: IdeaNode = {
     id: nanoid(),
     title: 'Nouvelle idée',
-    values: {},
+    values: template ? defaultValues(template.fields) : {},
     childMapId: null,
     ...DEFAULT_NODE_SIZE,
     ...input,

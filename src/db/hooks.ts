@@ -2,6 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useSyncExternalStore } from 'react'
 import { db } from './db'
 import { canRedo, canUndo, historyVersion, subscribeHistory } from './history'
+import { fieldValue, isDateRange, isTimelineField } from './fields'
+import type { PaletteColor } from './palette'
 import type { IdeaNode, Project } from './types'
 
 export function useProjects() {
@@ -115,4 +117,55 @@ export function useChildMapSizes(nodes: IdeaNode[] | undefined) {
     for (const child of children) sizes.set(child.mapId, (sizes.get(child.mapId) ?? 0) + 1)
     return sizes
   }, [key])
+}
+
+export interface TimelineEntry {
+  nodeId: string
+  fieldId: string
+  title: string
+  color: PaletteColor
+  /** ISO dates; equal for a single date. */
+  start: string
+  end: string
+  kind: 'date' | 'range'
+}
+
+/** Timeline key: names are matched ignoring case and surrounding spaces. */
+export const timelineKey = (name: string | undefined) => (name ?? '').trim().toLowerCase()
+
+/**
+ * Every date / period of the project that belongs to a named timeline, grouped by timeline, so a
+ * node can draw its own date in front of all the others of the same timeline.
+ */
+export function useTimelines(projectId: string) {
+  return useLiveQuery(async () => {
+    const [nodes, templates] = await Promise.all([db.nodes.where({ projectId }).toArray(), db.templates.where({ projectId }).toArray()])
+    const templatesById = new Map(templates.map((t) => [t.id, t]))
+    const timelines = new Map<string, TimelineEntry[]>()
+    for (const node of nodes) {
+      const template = templatesById.get(node.templateId)
+      if (!template) continue
+      for (const field of template.fields) {
+        const key = timelineKey(field.timelineName)
+        if (!key || !isTimelineField(field)) continue
+        const value = fieldValue(node, field)
+        let start: string | undefined
+        let end: string | undefined
+        if (field.type === 'date' && typeof value === 'string' && value) start = end = value
+        if (field.type === 'daterange' && isDateRange(value) && value.start && value.end) ({ start, end } = value)
+        if (!start || !end) continue
+        const entry: TimelineEntry = {
+          nodeId: node.id,
+          fieldId: field.id,
+          title: node.title,
+          color: template.style.color,
+          start,
+          end,
+          kind: field.type === 'date' ? 'date' : 'range',
+        }
+        timelines.set(key, [...(timelines.get(key) ?? []), entry])
+      }
+    }
+    return timelines
+  }, [projectId])
 }

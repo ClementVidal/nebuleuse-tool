@@ -1,11 +1,24 @@
 import type { PaletteColor, StrokeWidth } from './palette'
 
-export type FieldType = 'richtext' | 'date' | 'number'
+export type FieldType = 'richtext' | 'number' | 'date' | 'daterange'
 
 export interface TemplateField {
   id: string
   label: string
   type: FieldType
+  /** Help shown where the value is entered. */
+  description?: string
+  /** Shown on the idea on the canvas (default: true). */
+  showOnNode?: boolean
+  /** Value given to new ideas; for read-only fields, the value of every idea. */
+  defaultValue?: FieldValue
+  /** The value can't be changed on an idea: it is always the default value. */
+  readOnly?: boolean
+  /**
+   * date / daterange: ideas whose fields share a timeline name are drawn on one timeline
+   * (the idea's own date in front, the others behind).
+   */
+  timelineName?: string
 }
 
 /** Style shared by every node of a template (only editable in the template editor). */
@@ -45,8 +58,13 @@ export interface ReflexionMap {
   viewport?: { x: number; y: number; zoom: number }
 }
 
-/** Richtext values are stored as markdown, dates as ISO `yyyy-mm-dd`. */
-export type FieldValue = string | number | null
+/** Richtext values are stored as markdown, dates as ISO `yyyy-mm-dd`, ranges as two dates. */
+export type FieldValue = string | number | DateRangeValue | null
+
+export interface DateRangeValue {
+  start: string
+  end: string
+}
 
 export interface IdeaNode {
   id: string

@@ -16,6 +16,7 @@ Guide for working in this repository. Product spec: `SPEC.md` (French). UI copy 
   - `actions.ts` all writes (cascade deletes live here). `hooks.ts` reactive reads via `useLiveQuery`.
   - `history.ts` undo/redo. Content writes must go through `record()` (actions already do): Dexie hooks capture before/after snapshots of every touched record. Nested `record()` calls join one step; `coalesceKey` merges keystroke edits. Writes outside `record()` (viewport, `ensureChildMap`) are deliberately not undoable.
   - `palette.ts` limited colour palette; colours resolve to CSS variables (`--sketch-*` in `index.css`) so they follow the theme.
+  - `fields.ts` field helpers: `fieldValue()` (read-only fields always show the template default — use it rather than `node.values[id]`), defaults for new ideas, date formatting. Field options (`description`, `showOnNode`, `defaultValue`, `readOnly`, `timelineName`) are optional so old data needs no migration. `useTimelines()` (hooks) indexes the project's dates by timeline name; `features/map/timeline.tsx` draws them.
   - Node style lives on the template only (`color`, `strokeWidth`, `dashed`); `features/map/node-style.ts` turns it into CSS. Schema changes need a new `db.version(n)` with an `upgrade()` migrating existing data (users have real data in IndexedDB).
 - `src/features/map/` — the canvas.
   - `map-canvas.tsx` owns React Flow state. DB → RF sync spreads the previous RF node/edge first so React Flow's internal state (`measured`, selection…) survives; dropping `measured` makes edges disappear.

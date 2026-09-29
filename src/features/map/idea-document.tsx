@@ -13,8 +13,10 @@ import { setBookmarked, updateNode, updateNodeValue } from '@/db/actions'
 import { colorCss } from '@/db/palette'
 import type { IdeaNode, IdeaStatus, NodeTemplate, TemplateField } from '@/db/types'
 import { cn } from '@/lib/utils'
+import { fieldValue, formatFieldValue, isTimelineField } from '@/db/fields'
 import { markdownExcerpt, markdownToHtml } from './markdown'
 import { templateStyle } from './node-style'
+import { IdeaTimelines } from './timeline'
 
 export type DocumentMode = 'read' | 'edit'
 
@@ -90,9 +92,10 @@ function DocumentBody({ node, mode, template, location, onClose }: IdeaDocumentP
 
   const richFields = template?.fields.filter((f) => f.type === 'richtext') ?? []
   const metaFields = template?.fields.filter((f) => f.type !== 'richtext') ?? []
+  const timelineFields = template?.fields.filter(isTimelineField) ?? []
   const showFieldLabels = richFields.length > 1
 
-  const plainText = richFields.map((f) => markdownExcerpt(String(node.values[f.id] ?? ''), Infinity)).join(' ').trim()
+  const plainText = richFields.map((f) => markdownExcerpt(String(fieldValue(node, f) ?? ''), Infinity)).join(' ').trim()
   const words = plainText ? plainText.split(/\s+/).length : 0
   const minutes = Math.max(1, Math.round(words / 220))
 
@@ -240,11 +243,13 @@ function DocumentBody({ node, mode, template, location, onClose }: IdeaDocumentP
                   </span>
                 )}
                 {metaFields.map((f) => {
-                  const v = node.values[f.id]
-                  if (v === null || v === undefined || v === '') return null
+                  // Dates and periods are on the timelines below.
+                  if (isTimelineField(f)) return null
+                  const text = formatFieldValue(f, fieldValue(node, f))
+                  if (!text) return null
                   return (
                     <span key={f.id} className="rounded-full bg-muted px-2.5 py-0.5 text-xs">
-                      {f.label} : {f.type === 'date' ? new Date(String(v)).toLocaleDateString('fr-FR', { dateStyle: 'long' }) : String(v)}
+                      {f.label} : {text}
                     </span>
                   )
                 })}
@@ -252,19 +257,41 @@ function DocumentBody({ node, mode, template, location, onClose }: IdeaDocumentP
             ) : (
               <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
                 <StatusPicker node={node} />
-                {metaFields.map((f) => (
-                  <MetaFieldInput key={f.id} node={node} field={f} />
-                ))}
+                {metaFields.map((f) =>
+                  f.type === 'number' && !f.readOnly ? (
+                    <MetaFieldInput key={f.id} node={node} field={f} />
+                  ) : (
+                    // Dates are set in the idea's settings (calendar); read-only values can't change.
+                    <span
+                      key={f.id}
+                      className="inline-flex items-center gap-1.5"
+                      title={f.readOnly ? 'Lecture seule' : 'Se modifie dans les réglages de l’idée'}
+                    >
+                      {f.label}
+                      <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground">
+                        {formatFieldValue(f, fieldValue(node, f)) || '—'}
+                      </span>
+                    </span>
+                  ),
+                )}
+              </div>
+            )}
+
+            {/* Timelines of the date / period fields, the idea's own date in front. */}
+            {timelineFields.length > 0 && (
+              <div className="mt-6 grid gap-6">
+                <IdeaTimelines node={node} template={template} accent={accent} size="lg" />
               </div>
             )}
 
             <div className="mt-8 grid grid-cols-1 gap-10">
               {richFields.map((field) => {
-                const value = String(node.values[field.id] ?? '')
+                const value = String(fieldValue(node, field) ?? '')
                 return (
                   <section key={field.id}>
                     {showFieldLabels && <h2 className="doc-field-label">{field.label}</h2>}
-                    {reading ? (
+                    {!reading && field.description && <p className="-mt-1 mb-3 text-sm text-muted-foreground">{field.description}</p>}
+                    {reading || field.readOnly ? (
                       value.trim() ? (
                         <div className="doc-prose" dangerouslySetInnerHTML={{ __html: markdownToHtml(value) }} />
                       ) : (
@@ -274,7 +301,7 @@ function DocumentBody({ node, mode, template, location, onClose }: IdeaDocumentP
                       <RichTextEditor
                         value={value}
                         onChange={(md) => updateNodeValue(node.id, field.id, md)}
-                        placeholder={`${field.label}… (Markdown : ## titre, - liste, [ ] tâche, > citation)`}
+                        placeholder={field.description || `${field.label}… (Markdown : ## titre, - liste, [ ] tâche, > citation)`}
                       />
                     )}
                   </section>
@@ -373,30 +400,21 @@ function StatusPicker({ node }: { node: IdeaNode }) {
   )
 }
 
-/** Date / number field, as a small inline pill next to the status. */
+/** Number field, as a small inline pill next to the status. */
 function MetaFieldInput({ node, field }: { node: IdeaNode; field: TemplateField }) {
   const value = node.values[field.id]
   const id = `meta-${field.id}`
   return (
-    <label htmlFor={id} className="inline-flex items-center gap-1.5">
+    <label htmlFor={id} className="inline-flex items-center gap-1.5" title={field.description}>
       <span>{field.label}</span>
       <input
         id={id}
-        type={field.type === 'date' ? 'date' : 'number'}
-        inputMode={field.type === 'number' ? 'decimal' : undefined}
+        type="number"
+        inputMode="decimal"
         placeholder="—"
-        className={cn(
-          'doc-meta-input h-7 rounded-full border bg-transparent px-2.5 text-xs font-medium text-foreground outline-none transition-colors hover:bg-accent focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 dark:bg-input/30',
-          field.type === 'number' ? 'w-14 text-center' : 'w-36',
-        )}
+        className="doc-meta-input h-7 w-14 rounded-full border bg-transparent px-2.5 text-center text-xs font-medium text-foreground outline-none transition-colors hover:bg-accent focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 dark:bg-input/30"
         defaultValue={value === null || value === undefined ? '' : String(value)}
-        onChange={(e) =>
-          updateNodeValue(
-            node.id,
-            field.id,
-            e.target.value === '' ? null : field.type === 'number' ? Number(e.target.value) : e.target.value,
-          )
-        }
+        onChange={(e) => updateNodeValue(node.id, field.id, e.target.value === '' ? null : Number(e.target.value))}
       />
     </label>
   )

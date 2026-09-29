@@ -1,8 +1,11 @@
 import { createContext, useContext } from 'react'
+import type { TimelineEntry } from '@/db/hooks'
 import type { NodeTemplate } from '@/db/types'
 
 export interface MapActions {
   templates: Map<string, NodeTemplate>
+  /** Dates / periods of the project grouped by timeline name (see useTimelines). */
+  timelines: Map<string, TimelineEntry[]>
   /** Enter the idea's own map ("Explorer l'idée"). */
   openNode: (nodeId: string) => void
   openSettings: (nodeId: string) => void

@@ -32,7 +32,7 @@ import { createEdge, createNode, deleteEdges, deleteNodes, saveViewport, setBook
 import { DEFAULT_NODE_SIZE } from '@/db/defaults'
 import { colorCss, dimmedColorCss } from '@/db/palette'
 import { record } from '@/db/history'
-import { useChildMapSizes, useMapEdges, useMapNodes } from '@/db/hooks'
+import { type TimelineEntry, useChildMapSizes, useMapEdges, useMapNodes, useTimelines } from '@/db/hooks'
 import type { IdeaNode, NodeTemplate, ReflexionMap } from '@/db/types'
 import { cn } from '@/lib/utils'
 import { EdgePanel } from './edge-panel'
@@ -62,6 +62,8 @@ function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
 }
+
+const EMPTY_TIMELINES = new Map<string, TimelineEntry[]>()
 
 interface MapCanvasProps {
   map: ReflexionMap
@@ -98,6 +100,7 @@ export function MapCanvas({
   const dbNodes = useMapNodes(map.id)
   const dbEdges = useMapEdges(map.id)
   const childMapSizes = useChildMapSizes(dbNodes)
+  const timelines = useTimelines(map.projectId)
   const locked = useCanvasLocked()
   const [nodes, setNodes] = useState<IdeaFlowNode[]>([])
   const [edges, setEdges] = useState<LinkFlowEdge[]>([])
@@ -556,6 +559,7 @@ export function MapCanvas({
   const actions: MapActions = useMemo(
     () => ({
       templates: templatesById,
+      timelines: timelines ?? EMPTY_TIMELINES,
       openNode: onOpenNode,
       openSettings: setSettingsNodeId,
       requestDelete,
@@ -567,7 +571,7 @@ export function MapCanvas({
       followEdge,
       editEdge: (edgeId: string) => (locked ? followEdge(edgeId) : selectEdge(edgeId)),
     }),
-    [templatesById, onOpenNode, requestDelete, onNavigateUp, childMapSizes, menuNodeId, locked, followEdge, selectEdge],
+    [templatesById, timelines, onOpenNode, requestDelete, onNavigateUp, childMapSizes, menuNodeId, locked, followEdge, selectEdge],
   )
   const selectedEdges = edges.filter((e) => e.selected)
   const selectedEdge =
