@@ -1,12 +1,29 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type { IdeaEdge, IdeaNode, NodeTemplate, Project, ReflexionMap } from './types'
 
+/** A record changed locally and not yet sent to the server (see src/sync/engine.ts). */
+export interface OutboxEntry {
+  /** `${table}:${id}` */
+  key: string
+  table: string
+  id: string
+  /** Bumped on every change, so a push only clears the entries it actually sent. */
+  seq: number
+}
+
+export interface SyncMeta {
+  key: string
+  value: unknown
+}
+
 export const db = new Dexie('nebuleuse') as Dexie & {
   projects: EntityTable<Project, 'id'>
   templates: EntityTable<NodeTemplate, 'id'>
   maps: EntityTable<ReflexionMap, 'id'>
   nodes: EntityTable<IdeaNode, 'id'>
   edges: EntityTable<IdeaEdge, 'id'>
+  outbox: EntityTable<OutboxEntry, 'key'>
+  syncMeta: EntityTable<SyncMeta, 'key'>
 }
 
 db.version(1).stores({
@@ -46,6 +63,9 @@ db.version(3).stores({}).upgrade(async (tx) => {
       template.style.shape = template.name?.trim().toLowerCase() === 'note' ? 'sticky' : 'card'
     })
 })
+
+// v4: sync with the server — outbox of local changes, sync cursor.
+db.version(4).stores({ outbox: 'key', syncMeta: 'key' })
 
 // ---------------------------------------------------------------- connection status
 

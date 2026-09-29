@@ -3,6 +3,7 @@ import { ReactFlowProvider } from '@xyflow/react'
 import { House, Redo2, Search, Shapes, Undo2 } from 'lucide-react'
 import { Fragment, useCallback, useState } from 'react'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { AccountButton } from '@/features/shell/account-button'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -163,6 +164,7 @@ export function MapPage({ projectId, mapId, focusNodeId }: MapPageProps) {
         <div className="max-md:hidden">
           <KeyboardHelp />
         </div>
+        <AccountButton />
         <ThemeToggle />
       </header>
 

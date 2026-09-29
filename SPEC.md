@@ -173,8 +173,17 @@ Déverrouillé :
 - Changer de projet, revenir à la liste des projets, choisir le thème.
 
 ## Données
-- **Local-first** : tout est stocké dans le navigateur (IndexedDB via Dexie).
-- La couche d'accès (`src/db`) est isolée pour permettre plus tard une synchronisation serveur.
+- **Local-first** : tout est stocké dans le navigateur (IndexedDB via Dexie) et l'app fonctionne
+  hors ligne, connecté ou non.
+- **Synchronisation** (optionnelle) : une fois connecté (bouton nuage de l'en-tête : code par e-mail,
+  mot de passe ou Google — Neon Auth), les cartes sont synchronisées avec une base Postgres (Neon)
+  et retrouvées sur tous les appareils.
+  - Les modifications locales partent environ une seconde après ; les nouveautés arrivent toutes les
+    10 s tant que l'app est visible (et dès qu'elle revient au premier plan ou en ligne).
+  - La première connexion d'un appareil envoie ce qu'il contient déjà.
+  - Conflits : la dernière écriture gagne ; une modification locale pas encore envoyée l'emporte
+    sur ce qui arrive du serveur.
+- Prochaine étape : un serveur MCP pour que Claude crée et enrichisse les cartes (voir plus bas).
 
 ## Hors v1 (plus tard)
 - Export / import JSON d'un projet.

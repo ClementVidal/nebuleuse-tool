@@ -2,6 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { AccountButton } from '@/features/shell/account-button'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,7 +46,10 @@ export function ProjectsPage() {
     <div className="min-h-dvh">
       <header className="flex h-14 items-center justify-between border-b px-4 sm:px-6">
         <span className="font-reading text-2xl font-semibold tracking-tight">Nébuleuse</span>
-        <ThemeToggle />
+        <div className="flex items-center">
+          <AccountButton />
+          <ThemeToggle />
+        </div>
       </header>
 
       <main className="mx-auto max-w-3xl px-5 pt-10 pb-16 sm:px-8 sm:pt-16">

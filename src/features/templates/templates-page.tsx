@@ -5,6 +5,7 @@ import { nanoid } from 'nanoid'
 import { useState } from 'react'
 import { ColorPicker, EnumPicker, StrokeWidthPicker } from '@/components/style-pickers'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { AccountButton } from '@/features/shell/account-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -38,6 +39,7 @@ export function TemplatesPage({ projectId }: { projectId: string }) {
           </Link>
         </Button>
         <span className="flex-1 truncate text-sm font-medium">Templates</span>
+        <AccountButton />
         <ThemeToggle />
       </header>
 
