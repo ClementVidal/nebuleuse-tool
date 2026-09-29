@@ -1,6 +1,7 @@
 import {
   buildMap,
   createProject,
+  createTemplate,
   DomainError,
   getMap,
   getOutline,
@@ -9,7 +10,10 @@ import {
   search,
   Store,
   updateMap,
+  updateTemplate,
   type BuildTarget,
+  type FieldInput,
+  type FieldOperation,
   type MapInput,
   type Operation,
 } from './domain.js'
@@ -39,6 +43,9 @@ Méthode :
   Prêt en les relisant. Pour corriger ou compléter, utilise update_map (modifications, suppressions, liens).
 - Une idée marquée "aliasOf" est un alias : la même idée placée sur une autre carte. La modifier modifie
   l'originale (partout) ; la supprimer ne retire que l'alias.
+- Si aucun template ne convient (ex. une frise historique : Événement avec une période, Personnage avec
+  naissance et mort), crée-le avec create_template, ou adapte-en un avec update_template, avant build_map.
+  Les dates et périodes qui partagent un nom de frise ("timeline") s'affichent ensemble sur une frise.
 - Écris dans la langue de l'utilisateur (français par défaut).`
 
 type Json = Record<string, unknown>
@@ -93,6 +100,22 @@ const mapSchema: Json = {
   required: ['ideas'],
 }
 
+const styleProperties: Json = {
+  color: { type: 'string', enum: ['ink', 'red', 'green', 'blue', 'orange', 'violet'], description: 'Couleur d’accent des idées.' },
+  shape: { type: 'string', enum: ['card', 'sticky'], description: 'card = carte, sticky = post-it.' },
+  strokeWidth: { type: 'string', enum: ['thin', 'medium', 'thick'], description: 'Épaisseur du liseré.' },
+  dashed: { type: 'boolean', description: 'Contour pointillé.' },
+}
+
+const fieldOptions: Json = {
+  type: { type: 'string', enum: ['richtext', 'number', 'date', 'daterange'], description: 'richtext = texte Markdown, number, date, daterange = période.' },
+  description: { type: 'string', description: 'Aide affichée à la saisie ("" pour l’enlever).' },
+  visibleOnNode: { type: 'boolean', description: 'Affiché sur l’idée dans la carte (défaut true), pas seulement dans l’éditeur.' },
+  readOnly: { type: 'boolean', description: 'Toutes les idées ont la valeur par défaut, non modifiable.' },
+  default: { description: 'Valeur par défaut (même format que les champs des idées ; null pour l’enlever).' },
+  timeline: { type: 'string', description: 'Dates et périodes seulement : nom de frise ; celles qui le partagent s’affichent ensemble ("" pour l’enlever).' },
+}
+
 const TOOLS: Tool[] = [
   {
     name: 'list_projects',
@@ -142,6 +165,71 @@ const TOOLS: Tool[] = [
     inputSchema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
     run: async (store, a) => {
       const r = await createProject(store, String(a.name))
+      await store.commit()
+      return r
+    },
+  },
+  {
+    name: 'create_template',
+    title: 'Créer un template',
+    description:
+      'Crée un template dans un projet : nom, apparence et champs. Le premier champ texte (richtext) reçoit le "text" des idées.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        name: { type: 'string', description: 'Nom unique dans le projet.' },
+        ...styleProperties,
+        fields: {
+          type: 'array',
+          items: { type: 'object', properties: { name: { type: 'string' }, ...fieldOptions }, required: ['name', 'type'] },
+        },
+      },
+      required: ['projectId', 'name'],
+    },
+    run: async (store, a) => {
+      const r = await createTemplate(store, String(a.projectId), a as { name: string; fields?: FieldInput[] })
+      await store.commit()
+      return r
+    },
+  },
+  {
+    name: 'update_template',
+    title: 'Modifier un template',
+    description: `Modifie un template (désigné par son nom) : nom ("rename"), apparence, et champs par une liste d’opérations, appliquées ensemble (toutes ou aucune) :
+- { "op": "add_field", "name", "type", "position"?, options… }
+- { "op": "update_field", "field", "rename"?, "type"?, options… }
+- { "op": "remove_field", "field" }
+- { "op": "move_field", "field", "position" } (position à partir de 1)
+Options : description, visibleOnNode, readOnly, default, timeline. Les champs sont désignés par leur nom ; les renommer garde les valeurs des idées. La modification s’applique à toutes les idées du template.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        template: { type: 'string', description: 'Nom actuel du template.' },
+        rename: { type: 'string' },
+        ...styleProperties,
+        fields: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              op: { type: 'string', enum: ['add_field', 'update_field', 'remove_field', 'move_field'] },
+              field: { type: 'string', description: 'Nom du champ existant.' },
+              name: { type: 'string', description: 'add_field : nom du nouveau champ.' },
+              rename: { type: 'string' },
+              position: { type: 'number' },
+              ...fieldOptions,
+            },
+            required: ['op'],
+          },
+        },
+      },
+      required: ['projectId', 'template'],
+    },
+    annotations: { destructiveHint: true },
+    run: async (store, a) => {
+      const r = await updateTemplate(store, String(a.projectId), a as { template: string; fields?: FieldOperation[] })
       await store.commit()
       return r
     },

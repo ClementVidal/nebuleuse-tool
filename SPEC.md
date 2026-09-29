@@ -222,7 +222,10 @@ Déverrouillé :
   régénérable (l'ancienne cesse de marcher) ou révocable.
 - Outils : `list_projects`, `get_outline` (arbre des cartes), `get_map`, `search`, `list_templates`,
   `create_project`, `build_map` (idées + liens + sous-cartes en un appel, placement automatique),
-  `update_map` (modifier / supprimer idées et liens, tout ou rien).
+  `update_map` (modifier / supprimer idées et liens, tout ou rien), `create_template` (nom, apparence,
+  champs avec leurs options) et `update_template` (renommer, apparence, ajouter / modifier / supprimer /
+  déplacer des champs, tout ou rien ; renommer un champ garde les valeurs des idées). Pas de
+  suppression de template par Claude.
 - Les idées écrites par Claude sont marquées « Claude » et arrivent en statut Brouillon.
 - Plus tard : annuler d'un geste un lot écrit par Claude (chaque idée garde l'id de son lot).
 

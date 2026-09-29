@@ -430,14 +430,22 @@ export async function listTemplates(store: Store, projectId: string) {
     name: t.name,
     shape: t.style.shape,
     color: t.style.color,
-    fields: t.fields.map((f) => ({
-      name: f.label,
-      type: f.type,
-      ...(f.description ? { description: f.description } : {}),
-      ...(f.readOnly ? { readOnly: true } : {}),
-      ...(f.timelineName ? { timeline: f.timelineName } : {}),
-    })),
+    strokeWidth: t.style.strokeWidth,
+    dashed: t.style.dashed,
+    fields: t.fields.map(describeField),
   }))
+}
+
+function describeField(f: TemplateField) {
+  return {
+    name: f.label,
+    type: f.type,
+    ...(f.description ? { description: f.description } : {}),
+    ...(f.showOnNode === false ? { visibleOnNode: false } : {}),
+    ...(f.readOnly ? { readOnly: true } : {}),
+    ...(f.defaultValue !== undefined && f.defaultValue !== null ? { default: f.defaultValue } : {}),
+    ...(f.timelineName ? { timeline: f.timelineName } : {}),
+  }
 }
 
 export async function search(store: Store, projectId: string, query: string, limit = 30) {
@@ -770,4 +778,191 @@ export async function updateMap(store: Store, mapId: string, operations: Operati
   }
   await store.touchProject(map.projectId)
   return { mapId, batchId, done }
+}
+
+// ---------------------------------------------------------------- templates
+
+/** Mirror src/db/palette.ts and NodeShape. */
+const COLORS = ['ink', 'red', 'green', 'blue', 'orange', 'violet']
+const STROKE_WIDTHS = ['thin', 'medium', 'thick']
+const SHAPES = ['card', 'sticky']
+const FIELD_TYPES: FieldType[] = ['richtext', 'number', 'date', 'daterange']
+
+export interface StyleInput {
+  color?: string
+  shape?: string
+  strokeWidth?: string
+  dashed?: boolean
+}
+export interface FieldInput {
+  name?: string
+  type?: string
+  description?: string | null
+  visibleOnNode?: boolean
+  readOnly?: boolean
+  default?: unknown
+  timeline?: string | null
+}
+export type FieldOperation =
+  | ({ op: 'add_field'; position?: number } & FieldInput)
+  | ({ op: 'update_field'; field: string; rename?: string } & Omit<FieldInput, 'name'>)
+  | { op: 'remove_field'; field: string }
+  | { op: 'move_field'; field: string; position: number }
+
+function pick<T extends string>(value: unknown, allowed: readonly T[], what: string): T {
+  const v = String(value).trim().toLowerCase() as T
+  if (!allowed.includes(v)) throw new DomainError(`${what} inconnu(e) : « ${String(value)} ». Valeurs possibles : ${allowed.join(', ')}`)
+  return v
+}
+
+function applyStyle(style: Template['style'], input: StyleInput): Template['style'] {
+  return {
+    color: input.color !== undefined ? pick(input.color, COLORS, 'Couleur') : style.color,
+    shape: input.shape !== undefined ? pick(input.shape, SHAPES, 'Forme') : style.shape,
+    strokeWidth: input.strokeWidth !== undefined ? pick(input.strokeWidth, STROKE_WIDTHS, 'Épaisseur') : style.strokeWidth,
+    dashed: input.dashed !== undefined ? !!input.dashed : style.dashed,
+  }
+}
+
+/** Applies Claude's options to a field (a new one when `field` has no id yet). */
+function applyField(field: TemplateField, input: Omit<FieldInput, 'name'>): TemplateField {
+  const next: TemplateField = { ...field }
+  if (input.type !== undefined) {
+    const type = pick(input.type, FIELD_TYPES, 'Type de champ')
+    // Another kind of value: the default no longer applies (as in the app).
+    if (type !== next.type) delete next.defaultValue
+    next.type = type
+  }
+  if (input.description !== undefined) {
+    if (input.description) next.description = input.description
+    else delete next.description
+  }
+  if (input.visibleOnNode !== undefined) {
+    if (input.visibleOnNode) delete next.showOnNode
+    else next.showOnNode = false
+  }
+  if (input.readOnly !== undefined) {
+    if (input.readOnly) next.readOnly = true
+    else delete next.readOnly
+  }
+  if (input.default !== undefined) {
+    const value = toFieldValue(next, input.default)
+    if (value === null) delete next.defaultValue
+    else next.defaultValue = value
+  }
+  if (input.timeline !== undefined) {
+    if (input.timeline?.trim()) next.timelineName = input.timeline.trim()
+    else delete next.timelineName
+  }
+  if (next.timelineName && next.type !== 'date' && next.type !== 'daterange')
+    throw new DomainError(`« ${next.label} » : seule une date ou une période peut être sur une frise`)
+  return next
+}
+
+function newField(input: FieldInput, existing: TemplateField[]): TemplateField {
+  const label = input.name?.trim()
+  if (!label) throw new DomainError('Chaque champ doit avoir un nom')
+  if (existing.some((f) => f.label.toLowerCase() === label.toLowerCase())) throw new DomainError(`Champ en double : « ${label} »`)
+  return applyField({ id: nanoid(), label, type: pick(input.type ?? 'richtext', FIELD_TYPES, 'Type de champ') }, { ...input, type: undefined })
+}
+
+function checkTemplateName(templates: Template[], name: string | undefined, except?: string) {
+  const n = name?.trim()
+  if (!n) throw new DomainError('Le template doit avoir un nom')
+  if (templates.some((t) => t.id !== except && t.name.toLowerCase() === n.toLowerCase()))
+    throw new DomainError(`Un template « ${n} » existe déjà dans ce projet`)
+  return n
+}
+
+export async function createTemplate(store: Store, projectId: string, input: { name: string; fields?: FieldInput[] } & StyleInput) {
+  await store.project(projectId)
+  const templates = await store.templates(projectId)
+  const name = checkTemplateName(templates, input.name)
+  const fields: TemplateField[] = []
+  for (const [i, f] of (input.fields ?? []).entries()) {
+    try {
+      fields.push(newField(f, fields))
+    } catch (error) {
+      if (error instanceof DomainError) throw new DomainError(`champ ${i + 1} : ${error.message} (rien n’a été créé)`)
+      throw error
+    }
+  }
+  const template: Template = {
+    id: nanoid(),
+    projectId,
+    name,
+    order: (templates.at(-1)?.order ?? -1) + 1,
+    style: applyStyle({ color: 'ink', strokeWidth: 'medium', dashed: false, shape: 'card' }, input),
+    fields,
+  }
+  store.put('templates', template)
+  await store.touchProject(projectId)
+  return { name: template.name, ...template.style, fields: template.fields.map(describeField) }
+}
+
+export async function updateTemplate(
+  store: Store,
+  projectId: string,
+  input: { template: string; rename?: string; fields?: FieldOperation[] } & StyleInput,
+) {
+  await store.project(projectId)
+  const templates = await store.templates(projectId)
+  if (!input.template?.trim()) throw new DomainError('Indique le template à modifier (son nom)')
+  const template = findTemplate(templates, input.template)
+  const done: string[] = []
+  const name = input.rename !== undefined ? checkTemplateName(templates, input.rename, template.id) : template.name
+  if (name !== template.name) done.push(`renommé : ${template.name} → ${name}`)
+  const style = applyStyle(template.style, input)
+  if (JSON.stringify(style) !== JSON.stringify(template.style)) done.push('apparence modifiée')
+  let fields = [...template.fields]
+  const usage = (await store.where('nodes', 'templateId', template.id)).filter((n) => !n.aliasOf)
+  for (const [i, op] of (input.fields ?? []).entries()) {
+    try {
+      const index = 'field' in op ? fields.findIndex((f) => f.label.toLowerCase() === String(op.field).trim().toLowerCase()) : -1
+      if ('field' in op && index < 0)
+        throw new DomainError(`champ inconnu : « ${op.field} ». Champs : ${fields.map((f) => f.label).join(', ') || 'aucun'}`)
+      const at = (position: number | undefined) =>
+        position === undefined ? fields.length : Math.max(0, Math.min(fields.length, Math.round(position) - 1))
+      switch (op.op) {
+        case 'add_field': {
+          const field = newField(op, fields)
+          fields.splice(at(op.position), 0, field)
+          done.push(`champ ajouté : ${field.label}`)
+          break
+        }
+        case 'update_field': {
+          let field = fields[index]
+          if (op.rename !== undefined) {
+            const label = op.rename.trim()
+            if (!label) throw new DomainError('un champ doit avoir un nom')
+            if (fields.some((f, j) => j !== index && f.label.toLowerCase() === label.toLowerCase())) throw new DomainError(`champ en double : « ${label} »`)
+            field = { ...field, label }
+          }
+          fields[index] = applyField(field, op)
+          done.push(`champ modifié : ${fields[index].label}`)
+          break
+        }
+        case 'remove_field': {
+          const [field] = fields.splice(index, 1)
+          const filled = usage.filter((n) => n.values[field.id] !== undefined && n.values[field.id] !== null && n.values[field.id] !== '').length
+          done.push(`champ supprimé : ${field.label}${filled ? ` (sa valeur est masquée dans ${filled} idée${filled > 1 ? 's' : ''})` : ''}`)
+          break
+        }
+        case 'move_field': {
+          const [field] = fields.splice(index, 1)
+          fields.splice(Math.min(at(op.position), fields.length), 0, field)
+          done.push(`champ déplacé : ${field.label} en position ${fields.indexOf(field) + 1}`)
+          break
+        }
+        default:
+          throw new DomainError(`opération inconnue : ${(op as { op: string }).op}`)
+      }
+    } catch (error) {
+      if (error instanceof DomainError) throw new DomainError(`opération ${i + 1} (${op.op}) : ${error.message} (rien n’a été modifié)`)
+      throw error
+    }
+  }
+  store.put('templates', { ...template, name, style, fields })
+  await store.touchProject(projectId)
+  return { name, ...style, fields: fields.map(describeField), usedBy: usage.length, done }
 }
