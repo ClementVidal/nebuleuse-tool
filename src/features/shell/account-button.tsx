@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { sendEmailCode, signInWithCode, signInWithGoogle, signInWithPassword, signOut, useAccount } from '@/sync/auth'
+import { signInWithGoogle, signInWithPassword, signOut, useAccount } from '@/sync/auth'
 import { syncNow, useSyncState, type SyncState } from '@/sync/engine'
 import { cn } from '@/lib/utils'
 
@@ -94,16 +94,13 @@ function AccountDetails({ email, sync }: { email: string; sync: SyncState }) {
   )
 }
 
-type Step = { kind: 'email' } | { kind: 'code'; email: string } | { kind: 'password'; create: boolean }
-
 function SignIn({ loading }: { loading: boolean }) {
-  const [step, setStep] = useState<Step>({ kind: 'email' })
+  const [create, setCreate] = useState(false)
   const [email, setEmail] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string>()
 
-  const run = async (e: FormEvent, action: () => Promise<void>) => {
-    e.preventDefault()
+  const run = async (action: () => Promise<void>) => {
     setPending(true)
     setError(undefined)
     try {
@@ -118,76 +115,59 @@ function SignIn({ loading }: { loading: boolean }) {
   return (
     <div className="grid gap-3">
       <div>
-        <div className="text-sm font-semibold">Synchroniser tes cartes</div>
-        <p className="text-sm text-muted-foreground">Retrouve-les sur tous tes appareils, et laisse Claude les enrichir.</p>
+        <div className="text-sm font-semibold">{create ? 'Créer un compte' : 'Se connecter'}</div>
+        <p className="text-sm text-muted-foreground">Retrouve tes cartes sur tous tes appareils, et laisse Claude les enrichir.</p>
       </div>
 
-      {step.kind === 'email' && (
-        <form className="grid gap-2" onSubmit={(e) => run(e, async () => {
-          await sendEmailCode(email.trim())
-          setStep({ kind: 'code', email: email.trim() })
-        })}>
-          <Label htmlFor="signin-email">E-mail</Label>
-          <Input id="signin-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="toi@exemple.fr" />
-          <Button type="submit" disabled={pending || loading}>
-            {pending && <Loader2 className="animate-spin" />} Recevoir un code
-          </Button>
-        </form>
-      )}
-
-      {step.kind === 'code' && (
-        <form className="grid gap-2" onSubmit={(e) => run(e, async () => {
-          const code = new FormData(e.currentTarget as HTMLFormElement).get('code')
-          await signInWithCode(step.email, String(code).trim())
-        })}>
-          <Label htmlFor="signin-code">Code reçu à {step.email}</Label>
-          <Input id="signin-code" name="code" inputMode="numeric" autoComplete="one-time-code" required autoFocus placeholder="123456" />
-          <Button type="submit" disabled={pending}>
-            {pending && <Loader2 className="animate-spin" />} Se connecter
-          </Button>
-          <button type="button" className="justify-self-start text-xs text-muted-foreground underline" onClick={() => setStep({ kind: 'email' })}>
-            Changer d’e-mail
-          </button>
-        </form>
-      )}
-
-      {step.kind === 'password' && (
-        <form className="grid gap-2" onSubmit={(e) => run(e, async () => {
-          const password = String(new FormData(e.currentTarget as HTMLFormElement).get('password'))
-          await signInWithPassword(email.trim(), password, step.create)
-        })}>
-          <Label htmlFor="signin-email2">E-mail</Label>
-          <Input id="signin-email2" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Label htmlFor="signin-password">Mot de passe</Label>
-          <Input id="signin-password" name="password" type="password" autoComplete={step.create ? 'new-password' : 'current-password'} required minLength={8} />
-          <Button type="submit" disabled={pending}>
-            {pending && <Loader2 className="animate-spin" />} {step.create ? 'Créer le compte' : 'Se connecter'}
-          </Button>
-          <button type="button" className="justify-self-start text-xs text-muted-foreground underline" onClick={() => setStep({ kind: 'password', create: !step.create })}>
-            {step.create ? 'J’ai déjà un compte' : 'Créer un compte'}
-          </button>
-        </form>
-      )}
-
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      <Button variant="outline" onClick={() => void run(signInWithGoogle)} disabled={pending || loading}>
+        <GoogleIcon /> Continuer avec Google
+      </Button>
 
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className="h-px flex-1 bg-border" /> ou <span className="h-px flex-1 bg-border" />
       </div>
-      <div className="grid gap-2">
-        <Button variant="outline" onClick={(e) => void run(e, signInWithGoogle)} disabled={pending}>
-          Continuer avec Google
+
+      <form
+        className="grid gap-2"
+        onSubmit={(e: FormEvent<HTMLFormElement>) => {
+          e.preventDefault()
+          const password = String(new FormData(e.currentTarget).get('password'))
+          void run(() => signInWithPassword(email.trim(), password, create))
+        }}
+      >
+        <Label htmlFor="signin-email">E-mail</Label>
+        <Input id="signin-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="toi@exemple.fr" />
+        <Label htmlFor="signin-password">Mot de passe</Label>
+        <Input
+          id="signin-password"
+          name="password"
+          type="password"
+          autoComplete={create ? 'new-password' : 'current-password'}
+          required
+          minLength={8}
+          placeholder={create ? '8 caractères minimum' : undefined}
+        />
+        <Button type="submit" disabled={pending || loading}>
+          {pending && <Loader2 className="animate-spin" />} {create ? 'Créer le compte' : 'Se connecter'}
         </Button>
-        {step.kind !== 'password' ? (
-          <button type="button" className="text-xs text-muted-foreground underline" onClick={() => setStep({ kind: 'password', create: false })}>
-            Utiliser un mot de passe
-          </button>
-        ) : (
-          <button type="button" className="text-xs text-muted-foreground underline" onClick={() => setStep({ kind: 'email' })}>
-            Recevoir un code par e-mail
-          </button>
-        )}
-      </div>
+      </form>
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <button type="button" className="justify-self-center text-xs text-muted-foreground underline" onClick={() => setCreate(!create)}>
+        {create ? 'J’ai déjà un compte' : 'Pas encore de compte ? En créer un'}
+      </button>
     </div>
+  )
+}
+
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z" />
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z" />
+      <path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z" />
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" />
+    </svg>
   )
 }

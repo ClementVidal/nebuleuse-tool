@@ -176,8 +176,8 @@ Déverrouillé :
 ## Données
 - **Local-first** : tout est stocké dans le navigateur (IndexedDB via Dexie) et l'app fonctionne
   hors ligne, connecté ou non.
-- **Synchronisation** (optionnelle) : une fois connecté (bouton nuage de l'en-tête : code par e-mail,
-  mot de passe ou Google — Neon Auth), les cartes sont synchronisées avec une base Postgres (Neon)
+- **Synchronisation** (optionnelle) : une fois connecté (bouton nuage de l'en-tête : Google, ou e-mail et
+  mot de passe — Neon Auth), les cartes sont synchronisées avec une base Postgres (Neon)
   et retrouvées sur tous les appareils.
   - Les modifications locales partent environ une seconde après ; les nouveautés arrivent toutes les
     10 s tant que l'app est visible (et dès qu'elle revient au premier plan ou en ligne).

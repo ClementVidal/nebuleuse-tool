@@ -40,15 +40,6 @@ function unwrap<T>(result: { data: T; error: null } | { data: null; error: { mes
   return result.data
 }
 
-export async function sendEmailCode(email: string) {
-  unwrap(await auth!.emailOtp.sendVerificationOtp({ email, type: 'sign-in' }))
-}
-
-export async function signInWithCode(email: string, otp: string) {
-  unwrap(await auth!.signIn.emailOtp({ email, otp }))
-  await refreshAccount()
-}
-
 export async function signInWithPassword(email: string, password: string, create: boolean) {
   if (create) unwrap(await auth!.signUp.email({ email, password, name: email.split('@')[0] }))
   else unwrap(await auth!.signIn.email({ email, password }))
