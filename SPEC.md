@@ -91,6 +91,11 @@ Mémorisé dans le navigateur ; raccourci `L`. Double-clic et double-tap sont é
   (couleur, forme, bordure, contour ; partagée par toutes les idées du template), favori.
 - **Supprimer** : supprime l'idée ; confirmation si sa carte contient des idées (annulable avec `Ctrl+Z`).
 
+### Largeur de la page
+- Comme dans Notion, menu **« … »** de l'en-tête (lecteur et éditeur, écrans larges) → **Pleine
+  largeur** : la page occupe tout l'écran au lieu de la colonne centrée (par défaut). Réglage propre
+  à chaque idée, mémorisé (et synchronisé). Le sommaire n'est affiché qu'en colonne.
+
 ### Lecteur
 - Page dédiée (plein écran sur mobile) : police de lecture (Literata), ~65 caractères par ligne,
   interligne généreux, taille de texte réglable (mémorisée).

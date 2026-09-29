@@ -83,6 +83,8 @@ export interface IdeaNode {
   bookmarkedAt?: number
   /** Writing status; absent means draft. */
   status?: IdeaStatus
+  /** Reader / editor page spans the full width instead of a centred reading column. */
+  fullWidth?: boolean
 }
 
 export type IdeaStatus = 'draft' | 'ready'

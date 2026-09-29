@@ -1,12 +1,14 @@
-import { AArrowDown, AArrowUp, Bookmark, BookmarkCheck, BookOpen, Check, ChevronDown, PenLine, X } from 'lucide-react'
+import { AArrowDown, AArrowUp, Bookmark, BookmarkCheck, BookOpen, Check, ChevronDown, Ellipsis, PenLine, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { RichTextEditor } from '@/components/rich-text-editor'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { setBookmarked, updateNode, updateNodeValue } from '@/db/actions'
@@ -41,7 +43,11 @@ export function IdeaDocument(props: IdeaDocumentProps) {
     <Dialog open={node !== undefined} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="idea-document flex h-dvh max-h-dvh w-full max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:h-[94dvh] sm:max-w-5xl sm:rounded-xl sm:border"
+        className={cn(
+          'idea-document flex h-dvh max-h-dvh w-full max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0',
+          // Centred column: a large sheet over the canvas. Full width: the whole screen.
+          node?.fullWidth ? 'sm:max-w-none' : 'sm:h-[94dvh] sm:max-w-5xl sm:rounded-xl sm:border',
+        )}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         {node && <DocumentBody key={`${node.id}:${props.mode}`} {...props} node={node} />}
@@ -82,6 +88,7 @@ interface Heading {
 
 function DocumentBody({ node, mode, template, location, onClose }: IdeaDocumentProps & { node: IdeaNode }) {
   const reading = mode === 'read'
+  const wide = !!node.fullWidth
   const style = templateStyle(template)
   const accent = colorCss(style.color)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -183,6 +190,7 @@ function DocumentBody({ node, mode, template, location, onClose }: IdeaDocumentP
         >
           {node.bookmarkedAt ? <BookmarkCheck className="fill-current" /> : <Bookmark />}
         </Button>
+        <PageMenu node={node} />
         <Button variant="ghost" size="icon" className="size-8" title="Fermer (Échap)" aria-label="Fermer" onClick={onClose}>
           <X />
         </Button>
@@ -196,7 +204,7 @@ function DocumentBody({ node, mode, template, location, onClose }: IdeaDocumentP
       )}
 
       <div className="relative min-h-0 flex-1">
-        {reading && headings.length >= 2 && (
+        {reading && !wide && headings.length >= 2 && (
           <nav className="absolute top-10 left-6 hidden w-48 xl:block" aria-label="Sommaire">
             <div className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">Sommaire</div>
             <ul className="grid gap-1 text-sm">
@@ -218,7 +226,10 @@ function DocumentBody({ node, mode, template, location, onClose }: IdeaDocumentP
         <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto overscroll-contain" {...closeGestures}>
           <article
             ref={articleRef}
-            className="mx-auto w-full max-w-[42rem] px-5 pt-8 pb-24 sm:px-8 sm:pt-12"
+            className={cn(
+              'mx-auto w-full px-5 pt-8 pb-24 sm:pt-12',
+              wide ? 'max-w-none sm:px-12 lg:px-24' : 'max-w-[42rem] sm:px-8',
+            )}
             style={{ ['--doc-size' as string]: `${size}px` }}
           >
             {reading ? (
@@ -417,5 +428,32 @@ function MetaFieldInput({ node, field }: { node: IdeaNode; field: TemplateField 
         onChange={(e) => updateNodeValue(node.id, field.id, e.target.value === '' ? null : Number(e.target.value))}
       />
     </label>
+  )
+}
+
+/** "…" menu of the page, as in Notion: layout options of this idea's page. */
+function PageMenu({ node }: { node: IdeaNode }) {
+  const toggleWidth = () => void updateNode(node.id, { fullWidth: !node.fullWidth || undefined })
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        {/* Phones already use the whole screen: the option only matters on wider screens. */}
+        <Button variant="ghost" size="icon" className="size-8 max-sm:hidden" title="Options de la page" aria-label="Options de la page">
+          <Ellipsis />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60">
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Mise en page</DropdownMenuLabel>
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault() // keep the menu open, like a switch
+            toggleWidth()
+          }}
+        >
+          Pleine largeur
+          <Switch checked={!!node.fullWidth} tabIndex={-1} aria-hidden className="pointer-events-none ml-auto" />
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
