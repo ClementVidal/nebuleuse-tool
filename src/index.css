@@ -37,8 +37,12 @@
   --canvas: #fbfbf9;
   /* How strongly a template colour tints its nodes (cards, post-its). */
   --tint-card: 12%;
-  --tint-sticky: 30%;
-  --node-shadow: 0 1px 1px rgb(0 0 0 / 0.06), 0 8px 18px -6px rgb(0 0 0 / 0.22);
+  /* Post-its: a faint warm tint of the template colour. */
+  --tint-sticky: 13%;
+  --node-shadow: 0 1px 1px rgb(0 0 0 / 0.05), 0 10px 22px -10px rgb(0 0 0 / 0.25);
+  /* Cards: paper on the canvas. */
+  --node-border: #e6e5e1;
+  --node-card-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 6px 18px -10px rgb(0 0 0 / 0.14);
 
   --reading-font: "Literata Variable", "Literata", Charter, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
 }
@@ -71,8 +75,10 @@
   --sketch-violet: #c893e0;
   --canvas: #171716;
   --tint-card: 10%;
-  --tint-sticky: 21%;
-  --node-shadow: 0 1px 1px rgb(0 0 0 / 0.3), 0 10px 22px -8px rgb(0 0 0 / 0.6);
+  --tint-sticky: 12%;
+  --node-shadow: 0 1px 1px rgb(0 0 0 / 0.3), 0 12px 24px -10px rgb(0 0 0 / 0.65);
+  --node-border: rgb(255 250 240 / 0.08);
+  --node-card-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 20px -10px rgb(0 0 0 / 0.5);
 }
 
 @theme inline {
@@ -231,7 +237,7 @@
   bottom: 0;
   width: 18px;
   height: 18px;
-  background: linear-gradient(315deg, var(--canvas) 50%, color-mix(in srgb, currentColor 18%, transparent) 50%);
+  background: linear-gradient(315deg, var(--canvas) 50%, color-mix(in srgb, currentColor 10%, transparent) 50%);
   box-shadow: -1px -1px 2px rgb(0 0 0 / 0.08);
   pointer-events: none;
 }

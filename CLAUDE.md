@@ -36,6 +36,6 @@ Guide for working in this repository. Product spec: `SPEC.md` (French). UI copy 
 - `src/components/ui/` — shadcn/ui components, unmodified (new-york style). Add new ones from the shadcn registry rather than hand-writing them.
 
 ## Conventions
-- Tone: editorial, writing-first (Medium-like). Titles in bold tight sans, reading text in the serif `--reading-font` (Literata; `font-reading` utility), warm greys, thin rules rather than boxes, pill buttons (global `[data-slot="button"]` rule in `index.css`). Theme tokens live in `index.css`; dark mode is a soft charcoal with cream text, never pure black/white. Node tints come from `--tint-card` / `--tint-sticky` (per theme), mixed in `oklab`.
+- Tone: editorial, writing-first (Medium-like). Titles in bold tight sans, reading text in the serif `--reading-font` (Literata; `font-reading` utility), warm greys, thin rules rather than boxes, pill buttons (global `[data-slot="button"]` rule in `index.css`). Theme tokens live in `index.css`; dark mode is a soft charcoal with cream text, never pure black/white. Ideas are neutral paper cards (`--card`, `--node-border`); the template colour is only an accent (left rule + kicker dot, see `node-style.ts`). Post-its get a faint `--tint-sticky` tint (per theme), mixed in `oklab`.
 - Visual style: clean and sober. Excalidraw is the reference for the *UX* (minimal, direct, keyboard-first), not for the hand-drawn look.
 - Apply colours through `style` (not SVG attributes) so CSS variables work.

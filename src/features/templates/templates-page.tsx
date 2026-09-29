@@ -110,7 +110,7 @@ function TemplateEditor({ template, timelineNames }: { template: NodeTemplate; t
           </div>
           <div className="grid gap-2">
             <Label>Couleur</Label>
-            <p className="-mt-1 text-xs text-muted-foreground">Texte, bordure et fond atténué de toutes les idées de ce template.</p>
+            <p className="-mt-1 text-xs text-muted-foreground">Couleur d’accent des idées de ce template : liseré à gauche et pastille du nom.</p>
             <ColorPicker colors={COLORS} value={style.color} onChange={(color) => setStyle({ color })} />
           </div>
           <div className="grid gap-2">
@@ -126,7 +126,7 @@ function TemplateEditor({ template, timelineNames }: { template: NodeTemplate; t
           </div>
           <div className="flex flex-wrap gap-6">
             <div className="grid gap-2">
-              <Label>Bordure</Label>
+              <Label>Liseré</Label>
               <StrokeWidthPicker value={style.strokeWidth} onChange={(strokeWidth) => setStyle({ strokeWidth })} />
             </div>
             <div className="grid gap-2">

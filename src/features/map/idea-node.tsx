@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import { useMapActions } from './map-context'
 import { markdownToHtml } from './markdown'
 import { IdeaTimelines } from './timeline'
-import { nodeBoxClass, nodeBoxStyle, nodeTitleColor, templateStyle } from './node-style'
+import { nodeBoxClass, nodeBoxStyle, templateStyle } from './node-style'
 
 export type IdeaFlowNode = Node<{ model: IdeaNodeModel }, 'idea'>
 
@@ -60,7 +60,10 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
       />
       {/* A card stacked behind hints that the node opens onto a deeper map. */}
       {hasChildMap && (
-        <div className="absolute inset-0 translate-x-1.5 translate-y-1.5 rounded-lg" style={{ border: box.border, background: box.background }} />
+        <div
+          className="absolute inset-0 translate-x-1.5 translate-y-1.5 rounded-lg"
+          style={{ border: box.border === 'none' ? undefined : box.border, background: box.background, boxShadow: 'var(--node-card-shadow)' }}
+        />
       )}
       <div
         className={cn(
@@ -70,9 +73,16 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
         )}
         style={box}
       >
-        <div className="flex shrink-0 items-start justify-between gap-2" style={{ color: nodeTitleColor(style) }}>
-          <div className="line-clamp-3 text-[15px] font-semibold leading-snug">{model.title || 'Sans titre'}</div>
-          {model.bookmarkedAt && <Bookmark className="mt-0.5 size-4 shrink-0 fill-current" aria-label="Favori" />}
+        {/* Kicker: the template, as a section name above a Medium headline. */}
+        {template && (
+          <div className="flex shrink-0 items-center gap-1.5 text-[10.5px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+            <span className="size-1.5 shrink-0 rounded-full" style={{ background: colorCss(style.color) }} />
+            <span className="truncate">{template.name}</span>
+            {model.bookmarkedAt && <Bookmark className="ml-auto size-3.5 shrink-0 fill-current" aria-label="Favori" />}
+          </div>
+        )}
+        <div className="flex shrink-0 items-start justify-between gap-2">
+          <div className="line-clamp-3 text-[15.5px] leading-snug font-bold tracking-[-0.01em]">{model.title || 'Sans titre'}</div>
         </div>
         {content.length > 0 && (
           // Selected: the text scrolls with the wheel (nowheel keeps the canvas from zooming).
@@ -95,7 +105,6 @@ function IdeaNodeView({ data, width = 220, height = 120, selected }: NodeProps<I
           </div>
         )}
         <IdeaTimelines node={model} template={template} accent={colorCss(style.color)} onlyVisibleOnNode className="shrink-0" />
-        {template && <div className="mt-auto shrink-0 pt-1 text-[11px] uppercase tracking-wide opacity-50">{template.name}</div>}
       </div>
 
       {/* Depth navigation: up to the parent map, down into this idea's own map. */}

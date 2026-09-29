@@ -90,7 +90,7 @@ function Settings({ node, templates }: { node: IdeaNode; templates: NodeTemplate
             </div>
             <div className="flex flex-wrap gap-6">
               <div className="grid gap-2">
-                <Label>Bordure</Label>
+                <Label>Liseré</Label>
                 <StrokeWidthPicker value={style.strokeWidth} onChange={(strokeWidth) => setStyle({ strokeWidth })} />
               </div>
               <div className="grid gap-2">

@@ -30,12 +30,13 @@ une nouvelle carte qui le détaille. On navigue ainsi en profondeur dans ses ré
 - Templates créés par défaut avec un nouveau projet : `Note`, `Réflexion`, `Research`.
 - Un template définit :
   - un **style** (modifiable uniquement dans l'éditeur de templates) :
-    - **une seule couleur** (palette limitée) qui donne à la fois la couleur du texte, de la bordure
-      et un fond atténué ;
-    - épaisseur de bordure (fine / moyenne / épaisse) ;
+    - une **couleur d'accent** (palette limitée) : les idées restent des cartes « papier » sobres
+      (fond neutre, fine bordure grise, texte foncé) ; la couleur n'apparaît que sur un liseré à
+      gauche et sur la pastille du nom du template, affiché au-dessus du titre ;
+    - épaisseur du liseré (fin / moyen / épais) ;
     - contour plein ou pointillé ;
-    - **forme** : carte (bordure, fond atténué) ou post-it (fond plus soutenu, sans bordure,
-      ombre, coin plié) — le template « Note » est un post-it par défaut ;
+    - **forme** : carte ou post-it (légère teinte chaude de la couleur, sans bordure, ombre, coin
+      plié) — le template « Note » est un post-it par défaut ;
   - une liste ordonnée de **champs**. Chaque champ a :
     - un **nom** et un **type** : texte riche, nombre, **date**, **période** (début → fin) ;
     - une **description** (aide affichée à la saisie) ;
