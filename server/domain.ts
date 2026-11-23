@@ -521,23 +521,27 @@ function describeField(f: TemplateField) {
   }
 }
 
+/** Lowercase, without accents (one character per character, so positions are kept). */
+const normalize = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+
+/** Ideas whose title or texts contain every word of the query, accents and case ignored. */
 export async function search(store: Store, projectId: string, query: string, limit = 30) {
   await store.project(projectId)
-  const q = query.trim().toLowerCase()
-  if (!q) return []
-  const [nodes, templates] = await Promise.all([store.where('nodes', 'projectId', projectId), store.templates(projectId)])
-  const tpl = new Map(templates.map((t) => [t.id, t]))
+  const words = normalize(query).split(/\s+/).filter(Boolean)
+  if (words.length === 0) return []
+  const nodes = await store.where('nodes', 'projectId', projectId)
   const hits: { id: string; title: string; mapId: string; excerpt: string }[] = []
   for (const n of nodes) {
     if (n.aliasOf || n.mapRef) continue
-    const texts = [n.title, ...Object.values(n.values).map((v) => (typeof v === 'string' ? v : ''))]
-    const hit = texts.find((t) => t.toLowerCase().includes(q))
-    if (!hit) continue
-    const i = hit.toLowerCase().indexOf(q)
-    hits.push({ id: n.id, title: n.title, mapId: n.mapId, excerpt: hit.slice(Math.max(0, i - 80), i + q.length + 80) })
+    const texts = [n.title, ...Object.values(n.values).map((v) => (typeof v === 'string' ? v : ''))].map((t) => t.normalize('NFC'))
+    const all = normalize(texts.join('\n'))
+    if (!words.every((w) => all.includes(w))) continue
+    // Excerpt around the first word, in the text that holds it.
+    const hit = texts.find((t) => normalize(t).includes(words[0])) ?? n.title
+    const i = Math.max(0, normalize(hit).indexOf(words[0]))
+    hits.push({ id: n.id, title: n.title, mapId: n.mapId, excerpt: hit.slice(Math.max(0, i - 80), i + words[0].length + 80) })
     if (hits.length >= limit) break
   }
-  void tpl
   return hits
 }
 

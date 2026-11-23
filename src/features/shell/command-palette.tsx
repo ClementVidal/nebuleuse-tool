@@ -39,9 +39,32 @@ import { setCommandPaletteOpen, useCommandPaletteOpen } from './palette-store'
 
 const THEME_ICONS: Record<Theme, ReactNode> = { light: <Sun />, dark: <Moon />, system: <Monitor /> }
 
-/** Items match on their `keywords` only, so ids used as `value` never cause false matches. */
-function filter(value: string, search: string, keywords?: string[]) {
-  return defaultFilter(keywords?.length ? '' : value, search, keywords)
+/** Marks the keyword holding an idea's whole text (normalized), searched word by word. */
+const FULL_TEXT = '\u0001'
+
+/** Lowercase, without accents: « Révolution » is found by « revolution ». */
+const normalize = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+
+/** Small string hash, so an item's cmdk value changes whenever what it is searched on changes. */
+function hash(s: string) {
+  let h = 5381
+  for (let i = 0; i < s.length; i++) h = (h * 33) ^ s.charCodeAt(i)
+  return (h >>> 0).toString(36)
+}
+
+/**
+ * Items match on their `keywords` only, so ids used as `value` never cause false matches. Short
+ * keywords (title, location, command names) match fuzzily; an idea's full text matches when it
+ * contains every word typed, accents and case ignored.
+ */
+function filter(value: string, search: string, keywords: string[] = []) {
+  const short = keywords.filter((k) => !k.startsWith(FULL_TEXT))
+  const fuzzy = keywords.length ? (short.length ? defaultFilter('', search, short) : 0) : defaultFilter(value, search)
+  if (fuzzy > 0) return fuzzy
+  const text = keywords.find((k) => k.startsWith(FULL_TEXT))
+  if (!text) return 0
+  const words = normalize(search).split(/\s+/).filter(Boolean)
+  return words.length > 0 && words.every((w) => text.includes(w)) ? 0.05 : 0
 }
 
 export function CommandPalette() {
@@ -94,7 +117,7 @@ function PaletteContent() {
             {bookmarks.map(({ node, location }) => (
               <CommandItem
                 key={node.id}
-                value={`bookmark-${node.id}`}
+                value={`bookmark-${node.id}:${hash(node.title + location)}`}
                 keywords={['favori', node.title, location]}
                 onSelect={() => run(() => goToNode(node))}
               >
@@ -110,15 +133,18 @@ function PaletteContent() {
           <CommandGroup heading="Idées">
             {searchable.map(({ node, location }) => {
               const template = templateById.get(node.templateId)
-              const excerpt = template?.fields
+              // The whole text, not an excerpt: a word at the end of a long text must be found too.
+              const text = (template?.fields ?? [])
                 .filter((f) => f.type === 'richtext')
-                .map((f) => markdownExcerpt(String(node.values[f.id] ?? ''), 200))
+                .map((f) => markdownExcerpt(String(node.values[f.id] ?? ''), Infinity))
                 .join(' ')
+              const fullText = FULL_TEXT + normalize(`${node.title} ${text} ${location}`)
               return (
                 <CommandItem
                   key={node.id}
-                  value={node.id}
-                  keywords={[node.title, excerpt ?? '', location]}
+                  // cmdk only re-reads keywords when the value changes: tie the value to the content.
+                  value={`${node.id}:${hash(fullText)}`}
+                  keywords={[node.title, location, fullText]}
                   onSelect={() => run(() => goToNode(node))}
                 >
                   <span
