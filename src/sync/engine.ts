@@ -10,7 +10,10 @@ import { getAccount, getToken, refreshAccount, subscribeAccount } from './auth'
  * - pull fetches every change after our cursor; a record with a pending local change is skipped
  *   (the local version wins and will be pushed);
  * - runs a second after local changes, every 10 s while the app is visible, and when it comes back
- *   to the foreground or online.
+ *   to the foreground or online;
+ * - real-time mode: once a change made elsewhere arrives (another device, Claude through the MCP
+ *   server), the app keeps a request open on the server (`wait`) that returns as soon as there is
+ *   something new, for 10 minutes after the last such change, while visible. Then back to 10 s.
  * The first sync of an account on a device uploads everything already stored locally.
  */
 
@@ -20,6 +23,10 @@ type SyncTable = (typeof SYNC_TABLES)[number]
 const POLL_MS = 10_000
 const PUSH_DELAY_MS = 1_000
 const PUSH_BATCH = 200
+/** How long real-time mode lasts after the last change made elsewhere. */
+const REALTIME_MS = 10 * 60_000
+/** Server-side wait of a real-time request (the API caps it at 25 s). */
+const WAIT_S = 25
 
 export type SyncState = { state: 'off' | 'idle' | 'syncing' | 'offline'; lastSyncAt?: number } | { state: 'error'; message: string; lastSyncAt?: number }
 
@@ -101,6 +108,11 @@ interface Change {
   deleted: boolean
 }
 
+/** Keys sent by the last push: their echo in the next pull isn't a change made elsewhere. */
+const justPushed = new Set<string>()
+/** Real-time mode lasts until then (see watch()). */
+let realtimeUntil = 0
+
 async function push(token: string) {
   for (;;) {
     const entries = await db.outbox.limit(PUSH_BATCH).toArray()
@@ -115,6 +127,7 @@ async function push(token: string) {
       )
     }
     await api(token, '/api/sync', { method: 'POST', body: JSON.stringify({ changes }) })
+    for (const e of entries) justPushed.add(e.key)
     // Clear only what was sent: an entry changed meanwhile has a newer seq and stays.
     await db.transaction('rw', db.outbox, async () => {
       for (const e of entries) {
@@ -127,6 +140,9 @@ async function push(token: string) {
 
 async function pull(token: string, cursorKey: string) {
   let cursor = Number((await db.syncMeta.get(cursorKey))?.value ?? 0)
+  // A full download (first sync, cursor reset) isn't activity happening elsewhere.
+  const initial = cursor === 0
+  let fromElsewhere = false
   for (;;) {
     const page = await api<{ changes: (Change & { rev: number })[]; cursor: number; more: boolean }>(token, `/api/sync?since=${cursor}`)
     if (page.changes.length) {
@@ -134,7 +150,9 @@ async function pull(token: string, cursorKey: string) {
         remoteTransactions.add(root(tx))
         for (const c of page.changes) {
           if (!SYNC_TABLES.includes(c.table)) continue
-          if (await db.outbox.get(`${c.table}:${c.id}`)) continue // local change pending: it wins
+          const key = `${c.table}:${c.id}`
+          if (await db.outbox.get(key)) continue // local change pending: it wins
+          if (!justPushed.has(key)) fromElsewhere = true
           if (c.deleted) await db.table(c.table).delete(c.id)
           else await db.table(c.table).put(c.data)
         }
@@ -142,7 +160,45 @@ async function pull(token: string, cursorKey: string) {
       })
     }
     cursor = page.cursor
-    if (!page.more) return
+    if (!page.more) break
+  }
+  justPushed.clear()
+  if (fromElsewhere && !initial) {
+    realtimeUntil = Date.now() + REALTIME_MS
+    void watch()
+  }
+}
+
+let watching = false
+let watchAbort: AbortController | undefined
+
+/**
+ * Real-time mode: a request held open on the server until something changes after our cursor;
+ * then a regular sync applies it. Stops when the mode expires, the app is hidden or signed out.
+ */
+async function watch() {
+  if (watching) return
+  watching = true
+  try {
+    while (Date.now() < realtimeUntil && document.visibilityState === 'visible') {
+      const account = getAccount()
+      if (account.state !== 'signed-in' || !navigator.onLine) return
+      const token = await getToken()
+      if (!token) return
+      const cursor = Number((await db.syncMeta.get(`cursor:${account.userId}`))?.value ?? 0)
+      watchAbort = new AbortController()
+      try {
+        const page = await api<{ changes: unknown[] }>(token, `/api/sync?since=${cursor}&wait=${WAIT_S}`, { signal: watchAbort.signal })
+        if (page.changes.length) await syncNow()
+      } catch (error) {
+        if (watchAbort.signal.aborted) return
+        console.warn('real-time sync', error)
+        await new Promise((resolve) => setTimeout(resolve, 5_000))
+      }
+    }
+  } finally {
+    watching = false
+    watchAbort = undefined
   }
 }
 
@@ -230,10 +286,13 @@ export function startSync() {
   void refreshAccount()
   const visible = () => document.visibilityState === 'visible'
   setInterval(() => {
-    if (visible()) void syncNow()
+    if (visible() && !watching) void syncNow()
   }, POLL_MS)
   document.addEventListener('visibilitychange', () => {
-    if (visible()) void syncNow()
+    if (visible()) {
+      void syncNow()
+      void watch()
+    } else watchAbort?.abort() // no request held open for a hidden app
   })
   window.addEventListener('online', () => void syncNow())
 }

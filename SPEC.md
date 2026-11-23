@@ -232,6 +232,10 @@ Déverrouillé :
   et retrouvées sur tous les appareils.
   - Les modifications locales partent environ une seconde après ; les nouveautés arrivent toutes les
     10 s tant que l'app est visible (et dès qu'elle revient au premier plan ou en ligne).
+  - **Temps réel** : dès qu'arrive une modification faite ailleurs (autre appareil, Claude via le
+    serveur MCP), l'app passe en temps réel pendant 10 minutes (prolongées à chaque nouvelle
+    modification venue d'ailleurs) : une requête reste ouverte sur le serveur et revient dès qu'il y a
+    du nouveau, soit environ une seconde. Seulement quand l'app est visible ; ensuite, retour aux 10 s.
   - La première connexion d'un appareil envoie ce qu'il contient déjà.
   - Conflits : la dernière écriture gagne ; une modification locale pas encore envoyée l'emporte
     sur ce qui arrive du serveur.

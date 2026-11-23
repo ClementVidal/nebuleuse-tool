@@ -6,8 +6,14 @@ import { ensureSchema, parseChanges, pullChanges, pushChanges } from '../server/
 /**
  * Sync endpoint of the app.
  * - GET  /api/sync?since=<rev>  → { changes, cursor, more }
+ *   With `&wait=<s>` (max 25), the request is held until a change after `since` exists, or the
+ *   time is up (then `changes` is empty): the app's real-time mode, so writes made elsewhere
+ *   (e.g. by Claude through the MCP server) show up within about a second.
  * - POST /api/sync { changes }  → { rev }
  */
+
+const MAX_WAIT_S = 25
+const CHECK_EVERY_MS = 1000
 
 async function handle(request: Request, run: (userId: string) => Promise<Response>) {
   try {
@@ -23,9 +29,17 @@ async function handle(request: Request, run: (userId: string) => Promise<Respons
 
 export function GET(request: Request) {
   return handle(request, async (userId) => {
-    const since = Number(new URL(request.url).searchParams.get('since') ?? 0)
+    const params = new URL(request.url).searchParams
+    const since = Number(params.get('since') ?? 0)
     if (!Number.isFinite(since) || since < 0) return json({ error: 'since: invalid' }, 400)
-    return json(await pullChanges(getSql(), userId, since))
+    const wait = Math.min(MAX_WAIT_S, Math.max(0, Number(params.get('wait') ?? 0) || 0))
+    const sql = getSql()
+    const deadline = Date.now() + wait * 1000
+    for (;;) {
+      const page = await pullChanges(sql, userId, since)
+      if (page.changes.length || Date.now() >= deadline || request.signal.aborted) return json(page)
+      await new Promise((resolve) => setTimeout(resolve, CHECK_EVERY_MS))
+    }
   })
 }
 
