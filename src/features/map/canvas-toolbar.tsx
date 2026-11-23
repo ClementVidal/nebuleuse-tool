@@ -2,6 +2,8 @@ import { Panel } from '@xyflow/react'
 import { Bookmark, BookmarkX, Lock, LockOpen } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Kbd } from '@/components/ui/kbd'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 import { setBookmarked } from '@/db/actions'
@@ -13,25 +15,38 @@ import { useGoToNode } from './use-go-to-node'
 /** Floating tools over the canvas (bottom right): lock and bookmarks. */
 export function CanvasToolbar({ projectId }: { projectId: string }) {
   const locked = useCanvasLocked()
-  const lockLabel = locked
-    ? 'Verrouillé (lecture) : double-clic pour lire une idée. Cliquer pour déverrouiller (L)'
-    : 'Déverrouillé (édition) : double-clic pour éditer une idée. Cliquer pour verrouiller (L)'
+  const lockLabel = locked ? 'Verrouillé (lecture) : déverrouiller' : 'Déverrouillé (édition) : verrouiller'
 
   return (
     // Above the minimap on large screens (minimap: 150px high + 15px margin).
     <Panel position="bottom-right" className="max-md:!mb-8 md:!mb-[176px]">
       <div className="flex items-center gap-0.5 rounded-full border bg-background p-1 shadow-sm">
-        <Button
-          variant={locked ? 'ghost' : 'secondary'}
-          size="icon"
-          className="size-8"
-          title={lockLabel}
-          aria-label={lockLabel}
-          aria-pressed={!locked}
-          onClick={() => setCanvasLocked(!locked)}
-        >
-          {locked ? <Lock /> : <LockOpen />}
-        </Button>
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={locked ? 'ghost' : 'secondary'}
+                size="icon"
+                className="size-8"
+                aria-label={lockLabel}
+                aria-keyshortcuts="L"
+                aria-pressed={!locked}
+                onClick={() => setCanvasLocked(!locked)}
+              >
+                {locked ? <Lock /> : <LockOpen />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={6} className="max-w-72 text-pretty">
+              <div className="flex items-center gap-2 font-medium">
+                {locked ? 'Déverrouiller pour modifier' : 'Verrouiller (lecture seule)'}
+                <Kbd>L</Kbd>
+              </div>
+              <div className="mt-0.5 opacity-70">
+                {locked ? 'Lecture : double-clic pour lire une idée.' : 'Édition : double-clic pour éditer une idée.'}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <Separator orientation="vertical" className="!h-5" />
         <BookmarksButton projectId={projectId} />
       </div>

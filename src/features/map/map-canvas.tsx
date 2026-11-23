@@ -634,6 +634,7 @@ export function MapCanvas({
           }
           break
         case 'l':
+        case 'L': // with Shift or Caps Lock too
           event.preventDefault()
           setCanvasLocked(!locked)
           break
